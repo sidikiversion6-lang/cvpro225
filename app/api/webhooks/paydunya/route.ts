@@ -1,73 +1,67 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { checkPaydunyaStatus } from '@/lib/paydunya'
+import { handlePaydunyaIpn, type IpnStatus } from '@/lib/paydunya-ipn'
 import { sendConfirmationEmail, sendAdminNotification } from '@/lib/resend'
+
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json()
+    const raw = await request.text()
 
-    const invoiceToken = body?.data?.invoice?.token || body?.invoice?.token
-    if (!invoiceToken) {
-      return NextResponse.json({ error: 'Token manquant' }, { status: 400 })
-    }
+    const result = await handlePaydunyaIpn(raw, request.headers.get('content-type'), {
+      masterKey: process.env.PAYDUNYA_MASTER_KEY || '',
+      confirmInvoice: checkPaydunyaStatus,
 
-    const status = await checkPaydunyaStatus(invoiceToken)
+      findCommandeByToken: (token) =>
+        prisma.commande.findUnique({
+          where: { paydunya_token: token },
+          select: { id: true, ref: true, montant: true, paid_at: true },
+        }),
 
-    const commande = await prisma.commande.findFirst({
-      where: { paydunya_token: invoiceToken },
+      // Transition atomique : seule la première notification "completed" passe.
+      markPaidIfUnpaid: async (id) => {
+        const { count } = await prisma.commande.updateMany({
+          where: { id, paid_at: null },
+          data: { statut: 'confirmed', paydunya_status: 'completed', paid_at: new Date() },
+        })
+        return count === 1
+      },
+
+      markCancelledIfUnpaid: async (id, status: IpnStatus) => {
+        const { count } = await prisma.commande.updateMany({
+          where: { id, paid_at: null, statut: { not: 'cancelled' } },
+          data: { statut: 'cancelled', paydunya_status: status },
+        })
+        return count === 1
+      },
+
+      sendPaidEmails: async (id) => {
+        const c = await prisma.commande.findUniqueOrThrow({ where: { id } })
+        const emailData = {
+          ref: c.ref,
+          service: c.service,
+          pack: c.pack,
+          prenom: c.prenom,
+          nom: c.nom,
+          email: c.email,
+          telephone: c.telephone,
+          ville: c.ville || '',
+          montant: c.montant,
+          message: c.message || '',
+        }
+        await Promise.allSettled([sendConfirmationEmail(emailData), sendAdminNotification(emailData)])
+      },
+
+      log: (msg) => console.log(msg),
     })
 
-    if (!commande) {
-      return NextResponse.json({ error: 'Commande introuvable' }, { status: 404 })
-    }
-
-    if (status.status === 'completed') {
-      await prisma.commande.update({
-        where: { id: commande.id },
-        data: {
-          statut: 'confirmed',
-          paydunya_status: 'completed',
-          paid_at: new Date(),
-        },
-      })
-
-      const emailData = {
-        ref: commande.ref,
-        service: commande.service,
-        pack: commande.pack,
-        prenom: commande.prenom,
-        nom: commande.nom,
-        email: commande.email,
-        telephone: commande.telephone,
-        ville: commande.ville || '',
-        montant: commande.montant,
-        message: commande.message || '',
-      }
-
-      Promise.allSettled([
-        sendConfirmationEmail(emailData),
-        sendAdminNotification(emailData),
-      ]).catch(() => {})
-
-      console.log(`[PayDunya] Paiement confirmé: ${commande.ref}`)
-    }
-
-    if (status.status === 'cancelled' || status.status === 'failed') {
-      await prisma.commande.update({
-        where: { id: commande.id },
-        data: {
-          statut: 'cancelled',
-          paydunya_status: status.status,
-        },
-      })
-
-      console.log(`[PayDunya] Paiement ${status.status}: ${commande.ref}`)
-    }
-
-    return NextResponse.json({ received: true })
+    return NextResponse.json(result.body, { status: result.httpStatus })
   } catch (error) {
+    // Erreur transitoire (API PayDunya, base) : 500 pour permettre un renvoi de l'IPN.
     console.error('[Webhook PayDunya] Erreur:', error)
-    return NextResponse.json({ error: 'Erreur webhook' }, { status: 500 })
+    return NextResponse.json({ received: false, outcome: 'error' }, { status: 500 })
   }
 }
