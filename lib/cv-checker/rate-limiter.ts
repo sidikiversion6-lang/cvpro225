@@ -1,218 +1,146 @@
+import { isIP } from 'node:net';
 import { getSupabaseAdmin } from './supabase-client';
 
-// Whitelist : IPs jamais rate-limited (tests admin)
-const WHITELIST_IPS: string[] = [
-  '127.0.0.1',
-  '::1',
-  // Ajouter ton IP perso ici si tu veux tester sans limite
-  // Trouvable sur https://www.whatismyip.com
-];
+/**
+ * Rate-limit du CV Checker (chaque analyse coûte un appel à l'API IA).
+ *
+ * - IP : UNIQUEMENT `X-Real-Ip`, posé par Traefik qui écrase toute valeur
+ *   envoyée par le client (aucun trustedIPs). Les autres en-têtes
+ *   (CF-Connecting-IP, True-Client-IP, X-Client-IP, X-Forwarded-For…) sont
+ *   ignorés : Traefik les transmet tels quels, ils sont falsifiables.
+ * - Atomique : la fonction Postgres `cv_reserve_analysis` compte ET réserve
+ *   dans la même transaction (supabase/sql/03_cv_rate_limit.sql).
+ * - Plafond global : au-delà de CV_ANALYSIS_GLOBAL_DAILY_LIMIT analyses sur
+ *   24 h glissantes, le service est coupé pour tout le monde.
+ * - Fail-closed : si la base ne répond pas, pas d'analyse (pas d'appel IA).
+ */
 
-export interface RateLimitResult {
-  allowed: boolean;
-  reason?: 'ip_limit' | 'email_limit' | 'whitelisted';
-  message?: string;
-  ctaUrl?: string;
-}
-
-const RATE_LIMIT_HOURS = 24;
+export const CTA_URL = '/services/cv-pro';
 const CTA_PRICE = '15 000 FCFA';
-const CTA_URL = '/services/cv-pro';
+const WINDOW_HOURS = 24;
+const WHITELIST_IP_LIMIT = 1_000_000;
 
-/**
- * Récupère l'IP réelle du client depuis les headers.
- * Compatible avec Cloudflare, Nginx, et environnements directs.
- */
+export interface RateLimitConfig {
+  ipLimit: number;
+  globalLimit: number;
+  windowHours: number;
+  whitelist: string[];
+}
+
+function intFromEnv(raw: string | undefined, fallback: number): number {
+  if (raw === undefined || raw.trim() === '') return fallback;
+  const n = Number(raw);
+  return Number.isInteger(n) && n >= 0 ? n : fallback;
+}
+
+export function getRateLimitConfig(env: Record<string, string | undefined> = process.env): RateLimitConfig {
+  return {
+    ipLimit: intFromEnv(env.CV_ANALYSIS_IP_LIMIT, 1),
+    // Valeur absente ou invalide -> défaut prudent (jamais "illimité")
+    globalLimit: intFromEnv(env.CV_ANALYSIS_GLOBAL_DAILY_LIMIT, 100),
+    windowHours: WINDOW_HOURS,
+    whitelist: (env.CV_RATE_LIMIT_WHITELIST || '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
+  };
+}
+
+/** IP client, uniquement depuis X-Real-Ip (Traefik). Sinon 'unknown' (seau partagé). */
 export function extractClientIP(request: Request): string {
-  const headerCandidates = [
-    'cf-connecting-ip',  // Cloudflare
-    'x-real-ip',         // Nginx classique
-    'x-forwarded-for',   // Standard reverse proxy
-    'x-client-ip',
-    'true-client-ip',
-  ];
-
-  for (const header of headerCandidates) {
-    const value = request.headers.get(header);
-    if (value) {
-      const ip = value.split(',')[0].trim();
-      if (ip && ip !== 'unknown' && ip !== '::1' && !ip.startsWith('127.')) {
-        console.log(`[IP] Detected from ${header}: ${ip}`);
-        return ip;
-      }
-    }
-  }
-
-  // Fallback : prendre x-forwarded-for même si localhost (dev), sinon 'unknown'
-  const fallback = request.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown';
-  console.log(`[IP] Fallback: ${fallback}`);
-  return fallback;
+  const ip = request.headers.get('x-real-ip')?.trim();
+  return ip && isIP(ip) ? ip : 'unknown';
 }
 
-/**
- * Backward-compat alias (l'ancien code utilisait `getClientIP`).
- */
-export const getClientIP = extractClientIP;
+export type ReserveResult =
+  | { allowed: true; analysisId: number }
+  | {
+      allowed: false;
+      reason: 'ip_limit' | 'global_limit' | 'unavailable';
+      status: 429 | 503;
+      message: string;
+      ctaUrl: string;
+    };
 
-/**
- * NIVEAU 1 — vérifie si une IP peut faire une nouvelle analyse Claude.
- * Appelé AVANT /api/cv-analyze (avant que les tokens Claude soient consommés).
- */
-export async function checkAnalyzeRateLimit(ip: string): Promise<RateLimitResult> {
-  if (WHITELIST_IPS.includes(ip)) {
-    console.log(`[RateLimit] IP ${ip} is whitelisted`);
-    return { allowed: true, reason: 'whitelisted' };
-  }
+export type ReserveRpc = (args: {
+  p_ip: string;
+  p_ip_limit: number;
+  p_global_limit: number;
+  p_window_hours: number;
+}) => Promise<{ data: unknown; error: { message: string } | null }>;
 
-  if (!ip || ip === 'unknown') {
-    console.warn('[RateLimit] No IP detected, allowing by default');
-    return { allowed: true };
-  }
+const defaultRpc: ReserveRpc = async (args) => {
+  const { data, error } = await getSupabaseAdmin().rpc('cv_reserve_analysis', args);
+  return { data, error };
+};
 
-  const since = new Date();
-  since.setHours(since.getHours() - RATE_LIMIT_HOURS);
-
-  const { data, error } = await getSupabaseAdmin()
-    .from('cv_analyses_log')
-    .select('id, created_at')
-    .eq('ip_address', ip)
-    .gte('created_at', since.toISOString())
-    .limit(1);
-
-  if (error) {
-    console.error('[RateLimit] Analyze check error (fail-open):', error.message);
-    return { allowed: true };
-  }
-
-  console.log(`[RateLimit] IP ${ip}: ${data?.length || 0} analyses in last 24h`);
-
-  if (data && data.length > 0) {
+export async function reserveAnalysis(
+  ip: string,
+  config: RateLimitConfig = getRateLimitConfig(),
+  rpc: ReserveRpc = defaultRpc,
+): Promise<ReserveResult> {
+  const whitelisted = config.whitelist.includes(ip);
+  let row: { allowed?: boolean; reason?: string; analysis_id?: number | string } | undefined;
+  try {
+    const { data, error } = await rpc({
+      p_ip: ip,
+      p_ip_limit: whitelisted ? WHITELIST_IP_LIMIT : config.ipLimit,
+      p_global_limit: config.globalLimit,
+      p_window_hours: config.windowHours,
+    });
+    if (error) throw new Error(error.message);
+    row = Array.isArray(data) ? data[0] : (data as typeof row);
+  } catch (err) {
+    console.error('[RateLimit] réservation impossible (fail-closed):', err);
     return {
       allowed: false,
-      reason: 'ip_limit',
-      message: `Limite gratuite atteinte. Pour des analyses illimitées, commandez votre CV Pro ATS à ${CTA_PRICE}.`,
+      reason: 'unavailable',
+      status: 503,
+      message: "L'analyse gratuite est momentanément indisponible. Réessayez dans quelques minutes.",
       ctaUrl: CTA_URL,
     };
   }
 
-  return { allowed: true };
-}
-
-/**
- * NIVEAU 2 — vérifie si un email peut recevoir un rapport.
- * Appelé AVANT /api/cv-report.
- */
-export async function checkEmailRateLimit(email: string): Promise<RateLimitResult> {
-  if (!email) return { allowed: true };
-
-  const normalizedEmail = email.toLowerCase().trim();
-
-  const since = new Date();
-  since.setHours(since.getHours() - RATE_LIMIT_HOURS);
-
-  const { data, error } = await getSupabaseAdmin()
-    .from('cv_leads')
-    .select('id, created_at')
-    .eq('email', normalizedEmail)
-    .gte('created_at', since.toISOString())
-    .limit(1);
-
-  if (error) {
-    console.error('[RateLimit] Email check error (fail-open):', error.message);
-    return { allowed: true };
+  if (row?.allowed && row.analysis_id !== undefined && row.analysis_id !== null) {
+    return { allowed: true, analysisId: Number(row.analysis_id) };
   }
-
-  console.log(`[RateLimit] Email ${normalizedEmail}: ${data?.length || 0} reports in last 24h`);
-
-  if (data && data.length > 0) {
+  if (row?.reason === 'global_limit') {
+    console.warn('[RateLimit] plafond global journalier atteint — service coupé');
     return {
       allowed: false,
-      reason: 'email_limit',
-      message: `Cet email a déjà reçu un rapport aujourd'hui. Pour des analyses illimitées, commandez votre CV Pro ATS à ${CTA_PRICE}.`,
+      reason: 'global_limit',
+      status: 503,
+      message: `L'analyse gratuite a atteint sa capacité du jour. Réessayez demain, ou commandez votre CV Pro ATS à ${CTA_PRICE}.`,
       ctaUrl: CTA_URL,
     };
   }
-
-  return { allowed: true };
+  return {
+    allowed: false,
+    reason: 'ip_limit',
+    status: 429,
+    message: `Limite gratuite atteinte. Pour des analyses illimitées, commandez votre CV Pro ATS à ${CTA_PRICE}.`,
+    ctaUrl: CTA_URL,
+  };
 }
 
-/**
- * Backward-compat — l'ancienne fonction. Délègue aux 2 niveaux.
- */
-export async function checkRateLimit(ip: string, email?: string): Promise<RateLimitResult> {
-  const ipCheck = await checkAnalyzeRateLimit(ip);
-  if (!ipCheck.allowed) return ipCheck;
-  if (email) return checkEmailRateLimit(email);
-  return { allowed: true };
-}
-
-/**
- * Enregistre une analyse dans cv_analyses_log.
- * Appelé APRÈS une analyse Claude réussie, pour que la prochaine requête de la même IP soit bloquée.
- */
-export async function logAnalysis(data: {
-  ip_address: string;
-  cv_filename?: string;
-  sector?: string;
-  score?: number;
-  level?: string;
-  word_count?: number;
-}): Promise<{ id?: number; error?: string }> {
-  const { data: result, error } = await getSupabaseAdmin()
+/** Complète la ligne réservée après une analyse réussie. */
+export async function completeAnalysis(
+  analysisId: number,
+  data: { cv_filename?: string; sector?: string; score?: number; level?: string; word_count?: number },
+): Promise<void> {
+  const { error } = await getSupabaseAdmin()
     .from('cv_analyses_log')
-    .insert({
-      ip_address: data.ip_address,
-      cv_filename: data.cv_filename,
-      sector: data.sector,
-      score: data.score,
-      level: data.level,
-      word_count: data.word_count,
-      completed: false,
-    })
-    .select()
-    .single();
-
-  if (error) {
-    console.error('[logAnalysis] Insert error:', error.message);
-    return { error: error.message };
-  }
-
-  console.log(`[logAnalysis] Logged analysis ID ${result.id} for IP ${data.ip_address}`);
-  return { id: result.id };
+    .update({ ...data, completed: true })
+    .eq('id', analysisId);
+  if (error) console.error('[RateLimit] completeAnalysis:', error.message);
 }
 
-/**
- * Marque la dernière analyse non-complétée d'une IP comme `completed=true` + ajoute l'email.
- * Appelé après que l'utilisateur a aussi envoyé son email.
- */
-export async function markAnalysisCompleted(ip: string, email: string): Promise<void> {
-  const since = new Date();
-  since.setHours(since.getHours() - RATE_LIMIT_HOURS);
-
-  const { data: analyses, error: selectError } = await getSupabaseAdmin()
+/** Libère la réservation si l'analyse a échoué (fichier illisible, erreur IA). */
+export async function releaseAnalysis(analysisId: number): Promise<void> {
+  const { error } = await getSupabaseAdmin()
     .from('cv_analyses_log')
-    .select('id')
-    .eq('ip_address', ip)
-    .eq('completed', false)
-    .gte('created_at', since.toISOString())
-    .order('created_at', { ascending: false })
-    .limit(1);
-
-  if (selectError) {
-    console.error('[markCompleted] Select error:', selectError.message);
-    return;
-  }
-
-  if (analyses && analyses.length > 0) {
-    const { error: updateError } = await getSupabaseAdmin()
-      .from('cv_analyses_log')
-      .update({ completed: true, email: email.toLowerCase().trim() })
-      .eq('id', analyses[0].id);
-
-    if (updateError) {
-      console.error('[markCompleted] Update error:', updateError.message);
-    } else {
-      console.log(`[markCompleted] Analysis ${analyses[0].id} marked completed for ${email}`);
-    }
-  }
+    .delete()
+    .eq('id', analysisId)
+    .eq('completed', false);
+  if (error) console.error('[RateLimit] releaseAnalysis:', error.message);
 }

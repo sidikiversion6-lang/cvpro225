@@ -8,7 +8,7 @@
     "start": "next start",
     "prisma:generate": "prisma generate",
     "prisma:seed": "prisma db seed",
-    "test": "tsx --test tests/paydunya-ipn.test.ts"
+    "test": "tsx --conditions=react-server --test tests/*.test.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

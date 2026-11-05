@@ -35,8 +35,8 @@ export function CVAnalyzingStep({ file, sector, firstName, whatsappNumber, onCom
           body: formData,
         });
 
-        // 429 = rate limit atteint (1 analyse par IP / 24h)
-        if (response.status === 429) {
+        // 429 = limite par IP atteinte ; 503 = plafond global du jour / service indisponible
+        if (response.status === 429 || response.status === 503) {
           const data = await response.json();
           if (onRateLimited) {
             onRateLimited(data.message || 'Limite gratuite atteinte.');

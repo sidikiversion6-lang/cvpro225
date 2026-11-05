@@ -114,6 +114,11 @@ services:
       - --entrypoints.web.http.redirections.entrypoint.scheme=https
       - --entrypoints.web.http.redirections.entrypoint.permanent=true
       - --entrypoints.websecure.address=:443
+      # forwardedHeaders : aucun trustedIPs => Traefik ÉCRASE X-Real-Ip et
+      # X-Forwarded-For avec l'IP de connexion réelle. L'app ne lit que X-Real-Ip.
+      # (Si un CDN/proxy est ajouté devant, déclarer ses IP dans trustedIPs.)
+      - --entrypoints.web.forwardedHeaders.insecure=false
+      - --entrypoints.websecure.forwardedHeaders.insecure=false
       - --entrypoints.websecure.http.tls=true
 
       # --- Provider Docker ---

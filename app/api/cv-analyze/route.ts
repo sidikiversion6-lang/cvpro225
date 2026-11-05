@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { extractTextFromFile } from '@/lib/cv-analyzer/extractor';
 import { analyzeCV } from '@/lib/cv-analyzer/analyzer';
-import { checkAnalyzeRateLimit, extractClientIP, logAnalysis } from '@/lib/cv-checker/rate-limiter';
+import {
+  extractClientIP,
+  reserveAnalysis,
+  completeAnalysis,
+  releaseAnalysis,
+} from '@/lib/cv-checker/rate-limiter';
 import { saveLead } from '@/lib/cv-checker/supabase-client';
 import { sendAdminNotification } from '@/lib/cv-checker/email-service';
 
@@ -9,24 +14,9 @@ export const runtime = 'nodejs';
 export const maxDuration = 60; // 60 secondes car IA peut prendre 10-20s
 
 export async function POST(request: NextRequest) {
+  let reservationId: number | null = null;
   try {
-    // NIVEAU 1 — rate limit IP avant tout pour protéger les tokens Claude
     const ip = extractClientIP(request);
-    console.log(`[cv-analyze] Request from IP: ${ip}`);
-
-    const rateLimitCheck = await checkAnalyzeRateLimit(ip);
-    if (!rateLimitCheck.allowed) {
-      console.log(`[cv-analyze] BLOCKED: ${rateLimitCheck.reason}`);
-      return NextResponse.json(
-        {
-          error: 'rate_limited',
-          message: rateLimitCheck.message,
-          ctaUrl: rateLimitCheck.ctaUrl || '/services/cv-pro',
-          ctaLabel: 'Découvrir CV Pro ATS',
-        },
-        { status: 429 }
-      );
-    }
 
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
@@ -62,6 +52,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Réservation atomique (plafond IP + plafond global) AVANT tout appel IA
+    const reservation = await reserveAnalysis(ip);
+    if (!reservation.allowed) {
+      console.log(`[cv-analyze] BLOCKED: ${reservation.reason} (ip ${ip})`);
+      return NextResponse.json(
+        {
+          error: reservation.reason === 'ip_limit' ? 'rate_limited' : 'service_unavailable',
+          message: reservation.message,
+          ctaUrl: reservation.ctaUrl,
+          ctaLabel: 'Découvrir CV Pro ATS',
+        },
+        { status: reservation.status }
+      );
+    }
+    reservationId = reservation.analysisId;
+
     // Étape 1 : Extraction PDF/DOCX
     console.log(`[CV Check] Extraction du fichier ${file.name} (${file.size} bytes)`);
     const extracted = await extractTextFromFile(file);
@@ -72,15 +78,15 @@ export async function POST(request: NextRequest) {
     const analysis = await analyzeCV(extracted.text, sector);
     console.log(`[CV Check] Analyse terminée : score ${analysis.score}/100 — ${firstName}`);
 
-    // Étape 3 : Logger l'analyse pour le rate limit (bloque la prochaine requête de cette IP pendant 24h)
-    await logAnalysis({
-      ip_address: ip,
+    // Étape 3 : Compléter la réservation (elle compte désormais dans les plafonds)
+    await completeAnalysis(reservationId, {
       cv_filename: extracted.fileName,
       sector,
       score: analysis.score,
       level: analysis.level,
       word_count: extracted.wordCount,
     });
+    reservationId = null;
 
     // Étape 4 : Sauvegarder le lead (email factice basé sur WhatsApp pour respecter NOT NULL)
     const generatedEmail = `whatsapp_${cleanWhatsApp}@cvpro225.local`;
@@ -138,6 +144,10 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     console.error('[CV Check] Erreur:', error);
+    // Échec (fichier illisible, erreur IA) : la tentative ne consomme pas le quota
+    if (reservationId !== null) {
+      await releaseAnalysis(reservationId).catch(() => {});
+    }
     return NextResponse.json(
       {
         error: 'analysis_failed',

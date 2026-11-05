@@ -50,6 +50,9 @@ toute modification impose un rebuild (`docker compose up -d --build`).
 | ☐ | `PAYDUNYA_MODE` | `test` d'abord ; `live` après un paiement de bout en bout validé |
 | ☐ | `PAYDUNYA_WEBHOOK_URL` | `https://cvpro225.com/api/webhooks/paydunya` |
 | ☐ | `ANTHROPIC_API_KEY` | console Anthropic → clé dédiée prod (plafond de dépenses conseillé) |
+| ☐ | `CV_ANALYSIS_IP_LIMIT` | analyses gratuites par IP / 24 h (défaut `1`) |
+| ☐ | `CV_ANALYSIS_GLOBAL_DAILY_LIMIT` | plafond global / 24 h, coupe le service au-delà (défaut `100`) — à caler sur le budget IA |
+| ☐ | `CV_RATE_LIMIT_WHITELIST` | IP exemptées du plafond par IP (vide en prod) |
 | ☐ | `STRAPI_URL`, `STRAPI_API_TOKEN`, `GOOGLE_VERIFICATION` | optionnels |
 | — | `SEED_ADMIN_PASSWORD` | **inutile sur le serveur** (seed seulement, ≥ 12 caractères) |
 

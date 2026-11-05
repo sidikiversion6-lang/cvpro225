@@ -125,7 +125,10 @@ Puis, dans **Supabase → SQL Editor**, relire et exécuter dans l'ordre :
    lancer d'abord l'**étape 1 (diagnostic)** seule, vérifier les doublons, puis l'**étape 2**
    (sauvegarde `backup.cv_leads_20261105`, fusion, PK `(id)` + `UNIQUE(email)`).
 
-3. **Après vérification de `02`** (quelques jours d'utilisation, leads corrects, pas de perte) :
+3. [`supabase/sql/03_cv_rate_limit.sql`](../../supabase/sql/03_cv_rate_limit.sql) — fonction
+   `cv_reserve_analysis` (rate-limit atomique par IP + plafond global), `EXECUTE` réservé à
+   `service_role`. **Obligatoire** : sans elle, le CV Checker refuse toute analyse (fail-closed, 503).
+4. **Après vérification de `02`** (quelques jours d'utilisation, leads corrects, pas de perte) :
    supprimer la sauvegarde, qui contient des données personnelles :
 
    ```sql
@@ -245,3 +248,7 @@ Dans le tableau de bord PayDunya (<https://paydunya.com>) :
 - **Doublons `cv_leads`** : upsert sur `email` + `supabase/sql/02_cv_leads_constraints.sql` ;
   `/api/cv-report` désactivé (410).
 - **Seed** : exécutable dans l'image migrator (`tsx`).
+- **Rate-limit CV Checker** : IP lue uniquement dans `X-Real-Ip` (écrasé par Traefik), réservation
+  atomique en base (`03_cv_rate_limit.sql`), plafond global `CV_ANALYSIS_GLOBAL_DAILY_LIMIT`.
+- **Image Docker** : `pdf-parse`, `pdfjs-dist` et `@napi-rs/canvas` copiés explicitement (le traçage
+  standalone les omettait : l'extraction PDF échouait en prod).
