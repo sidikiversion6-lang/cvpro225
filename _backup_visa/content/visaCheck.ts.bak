@@ -1,0 +1,118 @@
+   VISA CHECK
+   ====================================================================== */
+
+export const visaCheck = {
+  slug: 'visa-check',
+  couleur: '#009460',
+
+  hero: {
+    badge: 'Visa Check',
+    titre: 'Votre dossier visa vérifié et prêt au millimètre',
+    sousTitre: 'Nous analysons votre dossier, calculons votre score de conformité sur 100 %, identifions les documents manquants et vous accompagnons jusqu\'au dépôt à l\'ambassade.',
+    ctaPrincipal: { label: 'Tester mon dossier gratuitement', href: '#simulateur' },
+    ctaSecondaire: { label: 'Demander l\'assistance complète', href: '/commander?service=visa' },
+  } as ServiceHero,
+
+  accroche: {
+    titre: 'Un refus visa peut tout changer',
+    texte: 'Un visa refusé, c\'est un voyage annulé, un projet reporté, une opportunité manquée — parfois des milliers de francs guinéens perdus. Dans la majorité des cas, les refus sont évitables. Ils sont causés par des documents manquants, mal remplis ou non conformes aux exigences consulaires. Notre mission : faire en sorte que ça ne vous arrive pas.',
+  } as Accroche,
+
+  prestations: [
+    {
+      titre: 'Analyse complète du dossier',
+      description: 'Nous examinons chaque document selon les exigences spécifiques de l\'ambassade visée. Passeport, relevés bancaires, justificatifs d\'emploi, assurance voyage... rien n\'est laissé au hasard.',
+    },
+    {
+      titre: 'Score de conformité sur 100 %',
+      description: 'Vous recevez un rapport clair avec le score de votre dossier, la liste des documents conformes, non conformes ou manquants, et les actions à mener en priorité.',
+    },
+    {
+      titre: 'Remplissage des formulaires officiels',
+      description: 'Nous remplissons les formulaires officiels pour vous, selon la destination.',
+      items: [
+        'France : formulaire France-Visas (france-visas.gouv.fr)',
+        'États-Unis : formulaire DS-160 (ceac.state.gov)',
+        'Canada : formulaire IRCC en ligne (canada.ca)',
+        'Turquie : formulaire ambassade',
+        'Schengen : formulaire Schengen unifié',
+        'Et tout autre pays sur demande',
+      ],
+    },
+    {
+      titre: 'Prise de rendez-vous consulaire',
+      description: 'Nous gérons la prise de rendez-vous sur les plateformes officielles.',
+      items: [
+        'Capago et TLScontact (France)',
+        'CGI Federal / USVisaScheduling (États-Unis)',
+        'VFS Global (Canada, Schengen)',
+        'BLS International (Turquie)',
+        'Et autres plateformes selon la destination',
+      ],
+    },
+    {
+      titre: 'Obtention de documents annexes',
+      description: 'Nous vous aidons à obtenir les documents complémentaires nécessaires.',
+      items: [
+        'Réservation d\'hôtel provisoire (pour le dossier)',
+        'Réservation de billet d\'avion provisoire',
+        'Devis assurance voyage au meilleur tarif',
+        'Lettre d\'invitation si nécessaire',
+      ],
+    },
+    {
+      titre: 'Préparation à l\'entretien consulaire',
+      description: 'Pour les ambassades qui exigent un entretien (USA notamment), nous vous préparons aux questions fréquentes et aux attitudes à adopter pour maximiser vos chances.',
+    },
+  ] as Prestation[],
+
+  packs: {
+    colonnes: [
+      { nom: 'Analyse', prix: '100 000 GNF', recommande: false },
+      { nom: 'Assistance', prix: '250 000 GNF', recommande: true },
+      { nom: 'Pack Complet', prix: '450 000 GNF', recommande: false },
+    ],
+    lignes: [
+      { label: 'Score + rapport conformité', valeurs: ['✓', '✓', '✓'] },
+      { label: 'Liste documents manquants', valeurs: ['✓', '✓', '✓'] },
+      { label: 'Remplissage formulaire officiel', valeurs: ['—', '✓', '✓'] },
+      { label: 'Prise de RDV consulaire', valeurs: ['—', '✓', '✓'] },
+      { label: 'Réservation hôtel provisoire', valeurs: ['—', '—', '✓'] },
+      { label: 'Réservation billet provisoire', valeurs: ['—', '—', '✓'] },
+      { label: 'Devis assurance voyage', valeurs: ['—', '—', '✓'] },
+      { label: 'Préparation entretien consulaire', valeurs: ['—', '—', '✓'] },
+      { label: 'Suivi jusqu\'au dépôt', valeurs: ['—', 'Partiel', '✓'] },
+    ],
+    note: 'Pro224 est un service d\'assistance documentaire. La décision finale d\'octroi du visa appartient exclusivement aux autorités consulaires compétentes.',
+  } as PacksSection,
+
+  destinations: [
+    { destination: 'France', plateforme: 'Capago / TLScontact', formulaire: 'france-visas.gouv.fr' },
+    { destination: 'États-Unis', plateforme: 'CGI Federal (USVisaScheduling)', formulaire: 'ceac.state.gov (DS-160)' },
+    { destination: 'Canada', plateforme: 'VFS Global', formulaire: 'canada.ca (IRCC)' },
+    { destination: 'Turquie', plateforme: 'BLS International', formulaire: 'evisa.gov.tr' },
+    { destination: 'Espagne / Italie / Allemagne...', plateforme: 'TLScontact / VFS Global', formulaire: 'Formulaire Schengen unifié' },
+    { destination: 'Autres destinations', plateforme: 'Selon ambassade', formulaire: 'Sur demande' },
+  ] as DestinationLigne[],
+
+  temoignages: [
+    { nom: 'Aissatou Balde', ville: 'Conakry', pack: 'Complet', note: 5, texte: 'J\'avais essayé seule deux fois et mon visa France avait été refusé. Avec Pro224, mon dossier a eu un score de 94 %. J\'ai obtenu mon visa du premier coup. Je suis maintenant en France pour mes études.' },
+    { nom: 'Oumar Kourouma', ville: 'Labé', pack: 'Assistance', note: 5, texte: 'Le remplissage du DS-160 pour les États-Unis est vraiment compliqué. L\'équipe a tout géré pour moi, pris le rendez-vous et m\'a même préparé à l\'entretien à l\'ambassade. Visa obtenu !' },
+    { nom: 'Mariama Sylla', ville: 'Conakry', pack: 'Analyse', note: 4, texte: 'Je voulais juste vérifier mon dossier avant de déposer. Le rapport m\'a montré que ma réservation d\'hôtel n\'était pas aux normes et que mon relevé bancaire était trop vieux. J\'ai tout corrigé et eu mon Schengen.' },
+  ] as Temoignage[],
+
+  faq: [
+    { question: 'Garantissez-vous l\'obtention du visa ?', reponse: 'Non, et méfiez-vous de ceux qui le prétendent. La décision appartient à l\'ambassade. Nous garantissons en revanche que votre dossier sera le plus solide possible pour maximiser vos chances.' },
+    { question: 'Combien de temps à l\'avance dois-je vous contacter ?', reponse: 'Idéalement 3 à 4 semaines avant votre date de dépôt prévue. Pour les destinations très demandées comme la France ou les USA, les rendez-vous consulaires peuvent être rares.' },
+    { question: 'Transmettez-vous mes documents sensibles en sécurité ?', reponse: 'Oui. Tous les documents sont transmis via notre espace client sécurisé ou par WhatsApp crypté. Ils sont supprimés de nos serveurs dans les 90 jours suivant la clôture du dossier.' },
+    { question: 'Puis-je commander depuis l\'étranger pour un membre de ma famille en Guinée ?', reponse: 'Absolument. Beaucoup de nos clients de la diaspora nous contactent pour aider leurs proches restés en Guinée. Nous nous adaptons.' },
+  ] as FAQItem[],
+
+  ctaFinal: {
+    titre: 'Votre prochain voyage commence ici.',
+    btnPrincipal: { label: 'Tester mon dossier gratuitement', href: '#simulateur' },
+    btnSecondaire: { label: 'Parler à un conseiller visa', href: '#whatsapp' },
+  } as CtaFinal,
+}
+
+/* ======================================================================

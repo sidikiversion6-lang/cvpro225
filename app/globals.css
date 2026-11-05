@@ -1,0 +1,197 @@
+/* Google Fonts — DOIT être avant les directives Tailwind */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&family=Open+Sans:wght@400;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==========================================================================
+   Variables CSS — Design tokens CVPro225
+   ========================================================================== */
+
+:root {
+  /* Primary — vert CVPro225 */
+  --gp-primary:        #0F7B5A;
+  --gp-primary-50:     #E6F2EE;
+  --gp-primary-100:    #C4E1D7;
+  --gp-primary-200:    #9DCDBD;
+  --gp-primary-300:    #6FB69E;
+  --gp-primary-400:    #3E9A7C;
+  --gp-primary-500:    #0F7B5A;
+  --gp-primary-600:    #0B5E45;
+  --gp-primary-700:    #094B37;
+  --gp-primary-800:    #073A2A;
+  --gp-primary-900:    #052B1F;
+
+  /* Accent — or doux (excellence) */
+  --gp-accent:         #D4A574;
+  --gp-accent-light:   #e6c097;
+  --gp-accent-dark:    #b68554;
+
+  /* Fond principal + texte */
+  --gp-bg:             #FAFAF9;
+  --gp-text:           #475569;
+
+  --gp-green:          #009460;
+  --gp-green-light:    #00b876;
+  --gp-green-dark:     #006f48;
+
+  --gp-red:            #CE1126;
+  --gp-red-light:      #e8263d;
+  --gp-red-dark:       #a00d1e;
+
+  --gp-yellow:         #F6BE00;
+  --gp-yellow-light:   #ffd033;
+  --gp-yellow-dark:    #c99b00;
+
+  --gp-dark:           #0F172A;
+  --gp-dark-light:     #1e293b;
+  --gp-dark-lighter:   #334155;
+
+  --gp-white:          #ffffff;
+  --gp-gray-50:        #f9fafb;
+  --gp-gray-100:       #f3f4f6;
+  --gp-gray-200:       #e5e7eb;
+  --gp-gray-300:       #d1d5db;
+  --gp-gray-400:       #9ca3af;
+  --gp-gray-500:       #6b7280;
+  --gp-gray-600:       #4b5563;
+  --gp-gray-700:       #374151;
+  --gp-gray-800:       #1f2937;
+
+  --gp-space-xs:       0.25rem;
+  --gp-space-sm:       0.5rem;
+  --gp-space-md:       1rem;
+  --gp-space-lg:       1.5rem;
+  --gp-space-xl:       2rem;
+  --gp-space-2xl:      3rem;
+  --gp-space-3xl:      4rem;
+  --gp-space-4xl:      6rem;
+
+  --gp-radius-sm:      0.375rem;
+  --gp-radius-md:      0.5rem;
+  --gp-radius-lg:      0.75rem;
+  --gp-radius-xl:      1rem;
+  --gp-radius-2xl:     1.5rem;
+  --gp-radius-full:    9999px;
+
+  --gp-shadow-sm:      0 1px 2px rgba(0, 0, 0, 0.05);
+  --gp-shadow-md:      0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --gp-shadow-lg:      0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+  --gp-shadow-xl:      0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+  --gp-shadow-primary: 0 4px 14px rgba(15, 123, 90, 0.30);
+
+  --gp-transition-fast:   150ms ease;
+  --gp-transition-base:   250ms ease;
+  --gp-transition-slow:   400ms ease;
+  --gp-transition-spring: 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ==========================================================================
+   Base — Styles légers (ne pas écraser les utilities Tailwind)
+   ========================================================================== */
+
+@layer base {
+  body {
+    font-family: 'Open Sans', ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-size: 1.125rem;
+    background-color: var(--gp-bg);
+    color: var(--gp-text);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    color: var(--gp-dark);
+  }
+
+  img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
+}
+
+/* ==========================================================================
+   Components — Utilitaires CVPro225
+   ========================================================================== */
+
+@layer components {
+
+  .gp-container {
+    @apply mx-auto w-full px-4 sm:px-8 lg:px-16;
+    max-width: 1400px;
+  }
+
+  .gp-btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg
+           font-semibold leading-none
+           transition-all duration-200 ease-in-out
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
+           disabled:pointer-events-none disabled:opacity-50;
+    padding: 0.625rem 1.5rem;
+    font-size: 0.9375rem;
+    font-family: 'Montserrat', sans-serif;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .gp-btn:active {
+    transform: scale(0.97);
+  }
+
+  .gp-btn-primary {
+    @apply bg-primary text-white focus-visible:ring-primary;
+    box-shadow: var(--gp-shadow-primary);
+  }
+
+  .gp-btn-primary:hover {
+    background-color: var(--gp-primary-600);
+    color: white;
+  }
+
+  .gp-btn-outline {
+    @apply border-2 border-primary text-primary bg-transparent
+           focus-visible:ring-primary;
+  }
+
+  .gp-btn-outline:hover {
+    @apply bg-primary text-white;
+    box-shadow: var(--gp-shadow-primary);
+  }
+
+  .gp-btn-white {
+    @apply bg-white border border-gray-200 focus-visible:ring-gray-300;
+    color: var(--gp-dark);
+    box-shadow: var(--gp-shadow-sm);
+  }
+
+  .gp-btn-white:hover {
+    @apply bg-gray-50 border-gray-300;
+    box-shadow: var(--gp-shadow-md);
+  }
+
+  .gp-btn-whatsapp {
+    color: white;
+    background-color: #25D366;
+    --tw-ring-color: #25D366;
+  }
+
+  .gp-btn-whatsapp:hover {
+    background-color: #1fb855;
+    color: white;
+    box-shadow: 0 4px 14px rgba(37, 211, 102, 0.35);
+  }
+
+  .gp-btn-lg {
+    padding: 0.875rem 2rem;
+    font-size: 1.0625rem;
+    @apply rounded-xl;
+  }
+
+  .gp-btn-sm {
+    padding: 0.375rem 1rem;
+    font-size: 0.8125rem;
+    @apply rounded-md;
+  }
+}

@@ -1,0 +1,508 @@
+export interface ServiceHero {
+  badge: string
+  titre: string
+  sousTitre: string
+  ctaPrincipal: { label: string; href: string }
+  ctaSecondaire: { label: string; href: string }
+}
+
+export interface Accroche {
+  titre: string
+  texte: string
+}
+
+export interface Prestation {
+  titre: string
+  description: string
+  items?: string[]
+}
+
+export interface PackColonne {
+  nom: string
+  prix: string
+  periode?: string
+  recommande: boolean
+}
+
+export interface PackLigne {
+  label: string
+  valeurs: string[]
+}
+
+export interface PacksSection {
+  colonnes: PackColonne[]
+  lignes: PackLigne[]
+  note?: string
+}
+
+export interface Etape {
+  num: number
+  titre: string
+  description: string
+}
+
+export interface Temoignage {
+  nom: string
+  ville: string
+  pack?: string
+  note: number
+  texte: string
+}
+
+export interface FAQItem {
+  question: string
+  reponse: string
+}
+
+export interface CtaFinal {
+  titre: string
+  btnPrincipal: { label: string; href: string }
+  btnSecondaire: { label: string; href: string }
+}
+
+export interface SecteurLigne {
+  secteur: string
+  sources: string
+}
+
+export interface DestinationLigne {
+  destination: string
+  plateforme: string
+  formulaire: string
+}
+
+/* ======================================================================
+   CV PRO ATS
+   ====================================================================== */
+
+export const cvPro = {
+  slug: 'cv-pro',
+  couleur: '#E85C1A',
+
+  hero: {
+    badge: 'CV Pro ATS',
+    titre: 'Un CV qui parle pour vous même avant l\'entretien',
+    sousTitre: 'Nous créons votre CV professionnel, optimisé pour les logiciels ATS et adapté aux standards des recruteurs en Guinée et à l\'international.',
+    ctaPrincipal: { label: 'Commander mon CV', href: '/commander?service=cv' },
+    ctaSecondaire: { label: 'Voir un exemple', href: '#exemple' },
+  } as ServiceHero,
+
+  accroche: {
+    titre: 'Ce que vous ne savez peut-être pas...',
+    texte: 'Saviez-vous que plus de 75 % des CV sont éliminés automatiquement avant même d\'être lus par un recruteur humain ? La raison ? Les grandes entreprises, ONG et institutions utilisent des logiciels appelés ATS (Applicant Tracking System) qui scannent et classent les CV selon des critères précis de mise en forme et de mots-clés. Un CV mal structuré, avec des tableaux, des colonnes ou des polices fantaisie, sera rejeté en quelques secondes — peu importe vos compétences. Chez Pro224, nous connaissons ces règles. Nous créons des CV qui passent ces filtres et qui impressionnent les recruteurs.',
+  } as Accroche,
+
+  prestations: [
+    'Entretien personnalisé pour collecter vos informations (formulaire en ligne ou WhatsApp)',
+    'Rédaction professionnelle de votre CV en français et/ou en anglais',
+    'Structure optimisée ATS : sections claires, mots-clés sectoriels, format compatible',
+    'Mise en page sobre et moderne, lisible par les logiciels et les humains',
+    'Livraison en formats PDF et DOCX modifiables',
+    'Audit de votre CV existant avec score ATS et recommandations détaillées (packs Standard et Premium)',
+    'Lettre de motivation personnalisée adaptée à votre secteur (packs Standard et Premium)',
+    'Optimisation de votre profil LinkedIn (pack Premium uniquement)',
+  ],
+
+  packs: {
+    colonnes: [
+      { nom: 'Basic', prix: '150 000 GNF', recommande: false },
+      { nom: 'Standard', prix: '250 000 GNF', recommande: true },
+      { nom: 'Premium', prix: '400 000 GNF', recommande: false },
+    ],
+    lignes: [
+      { label: 'CV professionnel (PDF + DOCX)', valeurs: ['✓', '✓', '✓'] },
+      { label: 'Optimisation ATS', valeurs: ['Basique', 'Avancée', 'Avancée'] },
+      { label: 'Score ATS + rapport d\'audit', valeurs: ['—', '✓', '✓'] },
+      { label: 'Lettre de motivation', valeurs: ['—', '✓', '✓'] },
+      { label: 'Profil LinkedIn optimisé', valeurs: ['—', '—', '✓'] },
+      { label: 'Nombre de retouches incluses', valeurs: ['1', '2', '3'] },
+      { label: 'Délai de livraison', valeurs: ['72h', '48h', '24h'] },
+      { label: 'Support WhatsApp prioritaire', valeurs: ['—', '—', '✓'] },
+    ],
+    note: 'Besoin d\'un CV en urgence (moins de 6h) ? Contactez-nous directement sur WhatsApp pour un tarif express.',
+  } as PacksSection,
+
+  processus: [
+    { num: 1, titre: 'Vous commandez', description: 'Choisissez votre pack et remplissez le formulaire en ligne, ou envoyez-nous un message sur WhatsApp. Pas besoin de CV existant — on part de zéro si nécessaire.' },
+    { num: 2, titre: 'On rédige pour vous', description: 'Notre équipe analyse votre parcours, identifie les mots-clés de votre secteur et rédige un CV structuré selon les standards ATS internationaux.' },
+    { num: 3, titre: 'Vous validez', description: 'Vous recevez votre CV par email. Si quelque chose ne vous convient pas, on ajuste selon le nombre de retouches inclus dans votre pack.' },
+    { num: 4, titre: 'Vous êtes prêt(e)', description: 'Vous recevez vos fichiers finaux PDF et DOCX. Vous pouvez postuler en toute confiance.' },
+  ] as Etape[],
+
+  pourquoi: [
+    'Équipe formée aux standards ATS des recruteurs internationaux',
+    'Expérience dans les secteurs clés en Guinée : mines, banque, télécoms, ONG, administration',
+    'Plus de 500 CV créés depuis notre lancement',
+    'Taux de satisfaction client : 96 %',
+    'Livraison garantie dans les délais ou remboursement',
+  ],
+
+  temoignages: [
+    { nom: 'Mamadou Bah', ville: 'Conakry', note: 5, texte: 'J\'avais postulé plusieurs fois sans réponse. Après avoir fait refaire mon CV par Pro224, j\'ai été convoqué pour un entretien à la BAD en moins de deux semaines. La différence était flagrante.' },
+    { nom: 'Fatoumata Diallo', ville: 'Kindia', pack: 'Standard', note: 5, texte: 'Le service est rapide, professionnel et abordable. J\'ai reçu mon CV en moins de 24h et la lettre de motivation était vraiment personnalisée à mon secteur. Je recommande à tous mes collègues.' },
+    { nom: 'Ibrahima Sory Camara', ville: 'Conakry', pack: 'Premium', note: 5, texte: 'Non seulement ils m\'ont fait un excellent CV, mais l\'optimisation LinkedIn m\'a permis d\'être contacté directement par un recruteur d\'une ONG internationale. Valeur inestimable.' },
+  ] as Temoignage[],
+
+  faq: [
+    { question: 'Mon CV sera-t-il vraiment lu par les recruteurs ?', reponse: 'Oui. Notre méthode garantit que votre CV passe les filtres ATS ET est agréable à lire pour un humain. Nous utilisons une structure validée par des recruteurs RH.' },
+    { question: 'Je n\'ai pas encore d\'expérience professionnelle, pouvez-vous quand même m\'aider ?', reponse: 'Absolument. Nous savons mettre en valeur votre formation, vos projets, votre bénévolat et vos compétences pour créer un CV percutant même sans expérience.' },
+    { question: 'Dans quelle langue mon CV sera-t-il rédigé ?', reponse: 'En français par défaut. Sur demande, nous pouvons le rédiger en anglais ou en version bilingue selon votre secteur cible.' },
+    { question: 'Que se passe-t-il si je ne suis pas satisfait ?', reponse: 'Vous bénéficiez de retouches incluses selon votre pack (1 à 3). Si après retouches vous n\'êtes toujours pas satisfait, nous vous remboursons intégralement.' },
+    { question: 'Comment vous transmettre mes informations ?', reponse: 'Via notre formulaire en ligne sécurisé ou directement par WhatsApp. Nous nous adaptons à votre confort.' },
+  ] as FAQItem[],
+
+  ctaFinal: {
+    titre: 'Prêt(e) à décrocher le poste que vous méritez ?',
+    btnPrincipal: { label: 'Commander mon CV maintenant', href: '/commander?service=cv' },
+    btnSecondaire: { label: 'Nous contacter sur WhatsApp', href: '#whatsapp' },
+  } as CtaFinal,
+}
+
+/* ======================================================================
+   VISA CHECK
+   ====================================================================== */
+
+export const visaCheck = {
+  slug: 'visa-check',
+  couleur: '#009460',
+
+  hero: {
+    badge: 'Visa Check',
+    titre: 'Votre dossier visa vérifié et prêt au millimètre',
+    sousTitre: 'Nous analysons votre dossier, calculons votre score de conformité sur 100 %, identifions les documents manquants et vous accompagnons jusqu\'au dépôt à l\'ambassade.',
+    ctaPrincipal: { label: 'Tester mon dossier gratuitement', href: '#simulateur' },
+    ctaSecondaire: { label: 'Demander l\'assistance complète', href: '/commander?service=visa' },
+  } as ServiceHero,
+
+  accroche: {
+    titre: 'Un refus visa peut tout changer',
+    texte: 'Un visa refusé, c\'est un voyage annulé, un projet reporté, une opportunité manquée — parfois des milliers de francs guinéens perdus. Dans la majorité des cas, les refus sont évitables. Ils sont causés par des documents manquants, mal remplis ou non conformes aux exigences consulaires. Notre mission : faire en sorte que ça ne vous arrive pas.',
+  } as Accroche,
+
+  prestations: [
+    {
+      titre: 'Analyse complète du dossier',
+      description: 'Nous examinons chaque document selon les exigences spécifiques de l\'ambassade visée. Passeport, relevés bancaires, justificatifs d\'emploi, assurance voyage... rien n\'est laissé au hasard.',
+    },
+    {
+      titre: 'Score de conformité sur 100 %',
+      description: 'Vous recevez un rapport clair avec le score de votre dossier, la liste des documents conformes, non conformes ou manquants, et les actions à mener en priorité.',
+    },
+    {
+      titre: 'Remplissage des formulaires officiels',
+      description: 'Nous remplissons les formulaires officiels pour vous, selon la destination.',
+      items: [
+        'France : formulaire France-Visas (france-visas.gouv.fr)',
+        'États-Unis : formulaire DS-160 (ceac.state.gov)',
+        'Canada : formulaire IRCC en ligne (canada.ca)',
+        'Turquie : formulaire ambassade',
+        'Schengen : formulaire Schengen unifié',
+        'Et tout autre pays sur demande',
+      ],
+    },
+    {
+      titre: 'Prise de rendez-vous consulaire',
+      description: 'Nous gérons la prise de rendez-vous sur les plateformes officielles.',
+      items: [
+        'Capago et TLScontact (France)',
+        'CGI Federal / USVisaScheduling (États-Unis)',
+        'VFS Global (Canada, Schengen)',
+        'BLS International (Turquie)',
+        'Et autres plateformes selon la destination',
+      ],
+    },
+    {
+      titre: 'Obtention de documents annexes',
+      description: 'Nous vous aidons à obtenir les documents complémentaires nécessaires.',
+      items: [
+        'Réservation d\'hôtel provisoire (pour le dossier)',
+        'Réservation de billet d\'avion provisoire',
+        'Devis assurance voyage au meilleur tarif',
+        'Lettre d\'invitation si nécessaire',
+      ],
+    },
+    {
+      titre: 'Préparation à l\'entretien consulaire',
+      description: 'Pour les ambassades qui exigent un entretien (USA notamment), nous vous préparons aux questions fréquentes et aux attitudes à adopter pour maximiser vos chances.',
+    },
+  ] as Prestation[],
+
+  packs: {
+    colonnes: [
+      { nom: 'Analyse', prix: '100 000 GNF', recommande: false },
+      { nom: 'Assistance', prix: '250 000 GNF', recommande: true },
+      { nom: 'Pack Complet', prix: '450 000 GNF', recommande: false },
+    ],
+    lignes: [
+      { label: 'Score + rapport conformité', valeurs: ['✓', '✓', '✓'] },
+      { label: 'Liste documents manquants', valeurs: ['✓', '✓', '✓'] },
+      { label: 'Remplissage formulaire officiel', valeurs: ['—', '✓', '✓'] },
+      { label: 'Prise de RDV consulaire', valeurs: ['—', '✓', '✓'] },
+      { label: 'Réservation hôtel provisoire', valeurs: ['—', '—', '✓'] },
+      { label: 'Réservation billet provisoire', valeurs: ['—', '—', '✓'] },
+      { label: 'Devis assurance voyage', valeurs: ['—', '—', '✓'] },
+      { label: 'Préparation entretien consulaire', valeurs: ['—', '—', '✓'] },
+      { label: 'Suivi jusqu\'au dépôt', valeurs: ['—', 'Partiel', '✓'] },
+    ],
+    note: 'Pro224 est un service d\'assistance documentaire. La décision finale d\'octroi du visa appartient exclusivement aux autorités consulaires compétentes.',
+  } as PacksSection,
+
+  destinations: [
+    { destination: 'France', plateforme: 'Capago / TLScontact', formulaire: 'france-visas.gouv.fr' },
+    { destination: 'États-Unis', plateforme: 'CGI Federal (USVisaScheduling)', formulaire: 'ceac.state.gov (DS-160)' },
+    { destination: 'Canada', plateforme: 'VFS Global', formulaire: 'canada.ca (IRCC)' },
+    { destination: 'Turquie', plateforme: 'BLS International', formulaire: 'evisa.gov.tr' },
+    { destination: 'Espagne / Italie / Allemagne...', plateforme: 'TLScontact / VFS Global', formulaire: 'Formulaire Schengen unifié' },
+    { destination: 'Autres destinations', plateforme: 'Selon ambassade', formulaire: 'Sur demande' },
+  ] as DestinationLigne[],
+
+  temoignages: [
+    { nom: 'Aissatou Balde', ville: 'Conakry', pack: 'Complet', note: 5, texte: 'J\'avais essayé seule deux fois et mon visa France avait été refusé. Avec Pro224, mon dossier a eu un score de 94 %. J\'ai obtenu mon visa du premier coup. Je suis maintenant en France pour mes études.' },
+    { nom: 'Oumar Kourouma', ville: 'Labé', pack: 'Assistance', note: 5, texte: 'Le remplissage du DS-160 pour les États-Unis est vraiment compliqué. L\'équipe a tout géré pour moi, pris le rendez-vous et m\'a même préparé à l\'entretien à l\'ambassade. Visa obtenu !' },
+    { nom: 'Mariama Sylla', ville: 'Conakry', pack: 'Analyse', note: 4, texte: 'Je voulais juste vérifier mon dossier avant de déposer. Le rapport m\'a montré que ma réservation d\'hôtel n\'était pas aux normes et que mon relevé bancaire était trop vieux. J\'ai tout corrigé et eu mon Schengen.' },
+  ] as Temoignage[],
+
+  faq: [
+    { question: 'Garantissez-vous l\'obtention du visa ?', reponse: 'Non, et méfiez-vous de ceux qui le prétendent. La décision appartient à l\'ambassade. Nous garantissons en revanche que votre dossier sera le plus solide possible pour maximiser vos chances.' },
+    { question: 'Combien de temps à l\'avance dois-je vous contacter ?', reponse: 'Idéalement 3 à 4 semaines avant votre date de dépôt prévue. Pour les destinations très demandées comme la France ou les USA, les rendez-vous consulaires peuvent être rares.' },
+    { question: 'Transmettez-vous mes documents sensibles en sécurité ?', reponse: 'Oui. Tous les documents sont transmis via notre espace client sécurisé ou par WhatsApp crypté. Ils sont supprimés de nos serveurs dans les 90 jours suivant la clôture du dossier.' },
+    { question: 'Puis-je commander depuis l\'étranger pour un membre de ma famille en Guinée ?', reponse: 'Absolument. Beaucoup de nos clients de la diaspora nous contactent pour aider leurs proches restés en Guinée. Nous nous adaptons.' },
+  ] as FAQItem[],
+
+  ctaFinal: {
+    titre: 'Votre prochain voyage commence ici.',
+    btnPrincipal: { label: 'Tester mon dossier gratuitement', href: '#simulateur' },
+    btnSecondaire: { label: 'Parler à un conseiller visa', href: '#whatsapp' },
+  } as CtaFinal,
+}
+
+/* ======================================================================
+   JOBASSIST
+   ====================================================================== */
+
+export const jobAssist = {
+  slug: 'job-assist',
+  couleur: '#D97706',
+
+  hero: {
+    badge: 'JobAssist',
+    titre: 'Trouvez l\'emploi qui vous correspond on s\'occupe du reste',
+    sousTitre: 'Identification des offres dans votre domaine, rédaction des candidatures, soumission en ligne et préparation aux entretiens. Vous vous concentrez sur vos compétences, on s\'occupe du processus.',
+    ctaPrincipal: { label: 'Déposer mon profil', href: '/commander?service=job' },
+    ctaSecondaire: { label: 'Voir les offres disponibles', href: '#secteurs' },
+  } as ServiceHero,
+
+  accroche: {
+    titre: 'Postuler en ligne, ce n\'est pas si simple',
+    texte: 'Trouver une offre d\'emploi, comprendre les critères, créer un compte sur le site de l\'employeur, adapter son CV, rédiger une lettre de motivation, soumettre le tout dans les délais... Ce processus décourage beaucoup de candidats talentueux. En Guinée, postuler à des offres d\'emploi formelles reste un défi pour beaucoup : plateformes en anglais, systèmes de candidature complexes, offres éparpillées sur des dizaines de sites différents. JobAssist existe pour que vous ne passiez plus à côté d\'une opportunité à cause du processus.',
+  } as Accroche,
+
+  prestations: [
+    {
+      titre: 'Veille des offres dans votre domaine',
+      description: 'Nous surveillons en continu les sources d\'emploi pertinentes pour votre profil.',
+      items: [
+        'Portails locaux : 224Business, Emploi Guinée, AGUIPE',
+        'Institutions internationales : PNUD, UNICEF, Banque Mondiale, BAD, OIM',
+        'Secteur privé : minières, banques, télécoms, ONG',
+        'Plateformes globales : LinkedIn, Indeed, Devex, ReliefWeb',
+        'Sites d\'employeurs directs selon votre profil',
+      ],
+    },
+    {
+      titre: 'Candidature complète et personnalisée',
+      description: 'Pour chaque offre ciblée, nous gérons l\'intégralité du processus.',
+      items: [
+        'Un CV adapté aux mots-clés et exigences de l\'offre',
+        'Une lettre de motivation sur mesure qui met en valeur votre profil',
+        'La soumission complète sur la plateforme de l\'employeur',
+        'La confirmation de réception et le suivi',
+      ],
+    },
+    {
+      titre: 'Préparation aux entretiens',
+      description: 'Nous vous préparons pour maximiser vos chances lors des entretiens.',
+      items: [
+        'Questions fréquentes par secteur (mines, banque, ONG, administration...)',
+        'Simulation d\'entretien par écrit ou WhatsApp',
+        'Conseils sur la présentation, la posture et les erreurs à éviter',
+        'Négociation salariale : comment répondre à la question du salaire',
+      ],
+    },
+  ] as Prestation[],
+
+  packs: {
+    colonnes: [
+      { nom: '1 Candidature', prix: '120 000 GNF', recommande: false },
+      { nom: 'Pack 3', prix: '300 000 GNF', recommande: true },
+      { nom: 'Pack Mensuel', prix: '500 000 GNF/mois', recommande: false },
+    ],
+    lignes: [
+      { label: 'Candidatures soumises', valeurs: ['1', '3', 'Illimitées'] },
+      { label: 'Veille d\'offres personnalisée', valeurs: ['—', '✓', '✓'] },
+      { label: 'CV adapté à l\'offre', valeurs: ['✓', '✓', '✓'] },
+      { label: 'Lettre de motivation', valeurs: ['✓', '✓', '✓'] },
+      { label: 'Soumission sur la plateforme', valeurs: ['✓', '✓', '✓'] },
+      { label: 'Suivi des candidatures', valeurs: ['—', '✓', '✓'] },
+      { label: 'Préparation entretien', valeurs: ['—', '1 entretien', 'Illimitée'] },
+      { label: 'Candidature express (< 4h)', valeurs: ['En option', '1 incluse', '3 incluses'] },
+    ],
+    note: 'Le Pack Mensuel est idéal si vous êtes en recherche active d\'emploi. Il vous offre un accompagnement complet pendant 30 jours.',
+  } as PacksSection,
+
+  secteurs: [
+    { secteur: 'Mines & Ressources naturelles', sources: 'SMFG, CBG, Rio Tinto, SMB, offres sectorielles' },
+    { secteur: 'Banque & Finance', sources: 'BCRG, Ecobank, Société Générale, Coris Bank, UBA' },
+    { secteur: 'Télécommunications', sources: 'Orange Guinée, MTN, Cellcom, Intercel' },
+    { secteur: 'ONG & Humanitaire', sources: 'PNUD, UNICEF, MSF, IRC, PAM, OCHA, ReliefWeb' },
+    { secteur: 'Administration publique', sources: 'AGUIPE, Journal Officiel, Ministères' },
+    { secteur: 'BTP & Ingénierie', sources: 'Cabinets d\'ingénierie, bailleurs de fonds' },
+    { secteur: 'Santé', sources: 'OMS, UNFPA, cliniques privées, hôpitaux' },
+    { secteur: 'Éducation & Formation', sources: 'Universités, écoles privées, organismes de formation' },
+  ] as SecteurLigne[],
+
+  temoignages: [
+    { nom: 'Sekou Traore', ville: 'Conakry', pack: 'Mensuel', note: 5, texte: 'Après 6 mois de recherche sans succès, j\'ai souscrit au pack mensuel. En 3 semaines, l\'équipe avait soumis 8 candidatures pour moi dans le secteur minier. J\'ai eu 2 entretiens et une offre d\'embauche.' },
+    { nom: 'Kadiatou Soumah', ville: 'Conakry', pack: '1 Candidature', note: 5, texte: 'Je voulais postuler à une offre du PNUD mais le processus était en anglais et très compliqué. Pro224 a tout géré en moins de 3 heures. J\'ai été sélectionnée pour l\'entretien.' },
+    { nom: 'Alpha Oumar Diallo', ville: 'Kindia', pack: '3 Candidatures', note: 5, texte: 'Habitant en région, il m\'était difficile de suivre les offres de Conakry. Avec JobAssist, j\'ai eu un suivi personnalisé et on m\'a aidé à me préparer pour mon entretien à distance. Je suis maintenant employé à Conakry.' },
+  ] as Temoignage[],
+
+  faq: [
+    { question: 'Puis-je vous donner une offre spécifique que j\'ai trouvée moi-même ?', reponse: 'Absolument. Avec le pack « 1 Candidature », vous nous transmettez le lien de l\'offre et nous gérons tout le processus de candidature pour vous.' },
+    { question: 'Que se passe-t-il si je ne suis pas sélectionné ?', reponse: 'Le processus de recrutement dépend de l\'employeur. Nous garantissons la qualité de la candidature soumise. En cas de refus, nous analysons le retour si disponible et vous conseillons pour la suite.' },
+    { question: 'Combien d\'offres me proposez-vous chaque semaine avec le pack mensuel ?', reponse: 'En moyenne 5 à 10 offres par semaine selon votre profil et votre secteur. Vous validez les offres qui vous intéressent avant que nous soumettions la candidature.' },
+    { question: 'Je suis encore étudiant, pouvez-vous m\'aider à trouver un stage ?', reponse: 'Oui, nous accompagnons aussi les étudiants pour des recherches de stage. Mentionnez-le lors de votre commande pour que nous adaptions notre veille.' },
+  ] as FAQItem[],
+
+  ctaFinal: {
+    titre: 'Votre prochain employeur vous cherche aussi.',
+    btnPrincipal: { label: 'Déposer mon profil maintenant', href: '/commander?service=job' },
+    btnSecondaire: { label: 'Nous contacter sur WhatsApp', href: '#whatsapp' },
+  } as CtaFinal,
+}
+
+/* ======================================================================
+   TENDERPRO
+   ====================================================================== */
+
+export const tenderPro = {
+  slug: 'tender-pro',
+  couleur: '#CE1126',
+
+  hero: {
+    badge: 'TenderPro',
+    titre: 'Les appels d\'offres qui correspondent à votre entreprise',
+    sousTitre: 'Pro224 surveille les marchés publics et privés pour vous, vous alerte dès qu\'une opportunité correspond à votre secteur, et vous accompagne dans la constitution d\'un dossier de soumission solide et conforme.',
+    ctaPrincipal: { label: 'S\'inscrire aux alertes AO', href: '/commander?service=tender' },
+    ctaSecondaire: { label: 'Nous confier un dossier', href: '/contact' },
+  } as ServiceHero,
+
+  accroche: {
+    titre: 'Combien de marchés votre entreprise a-t-elle manqués ?',
+    texte: 'En Guinée, des centaines d\'appels d\'offres sont publiés chaque mois par l\'État, les collectivités, les entreprises privées et les organisations internationales. Beaucoup de PME guinéennes passent à côté pour deux raisons : elles ne sont pas informées à temps, ou leur dossier de soumission est rejeté pour non-conformité. TenderPro règle ces deux problèmes.',
+  } as Accroche,
+
+  prestations: [
+    {
+      titre: 'Veille et alertes appels d\'offres',
+      description: 'Nous surveillons en continu toutes les sources d\'appels d\'offres.',
+      items: [
+        'ARMP — Autorité de Régulation des Marchés Publics (Guinée)',
+        'Ministères et administrations publiques guinéennes',
+        'Mairies et collectivités locales',
+        'Banque Mondiale, BAD, BID, BOAD',
+        'Union Européenne, USAID, AFD',
+        'Nations Unies : PNUD, UNICEF, PAM, ONUDI, FAO',
+        'Grandes entreprises privées et groupes miniers',
+        'Portails régionaux Afrique de l\'Ouest',
+      ],
+    },
+    {
+      titre: 'Analyse de l\'appel d\'offres',
+      description: 'Avant de soumissionner, nous analysons l\'opportunité pour vous.',
+      items: [
+        'Éligibilité de votre entreprise selon les critères requis',
+        'Documents administratifs nécessaires',
+        'Niveau de concurrence estimé',
+        'Points d\'attention et pièges à éviter',
+        'Recommandation : soumissionner ou non, et pourquoi',
+      ],
+    },
+    {
+      titre: 'Constitution du dossier de soumission',
+      description: 'Nous montons un dossier complet et conforme.',
+      items: [
+        'Note de présentation de l\'entreprise',
+        'Note méthodologique et plan de travail',
+        'CV des experts et équipes mobilisées',
+        'Références de projets similaires',
+        'Devis et offre financière structurée',
+        'Documents administratifs : statuts, RCCM, attestations fiscales, cautions',
+        'Mise en forme selon les exigences du cahier des charges',
+      ],
+    },
+    {
+      titre: 'Vérification de conformité avant soumission',
+      description: 'Dernière vérification avant le dépôt.',
+      items: [
+        'Vérification de la complétude des pièces demandées',
+        'Contrôle des dates de validité des documents',
+        'Vérification de la conformité formelle (reliure, pagination, signatures...)',
+        'Score de conformité sur 100 % avec rapport',
+      ],
+    },
+  ] as Prestation[],
+
+  packs: {
+    colonnes: [
+      { nom: 'Par dossier', prix: '600 000 GNF', recommande: false },
+      { nom: 'Mensuel', prix: '400 000 GNF/mois', recommande: true },
+      { nom: 'Annuel', prix: '3 500 000 GNF/an', recommande: false },
+    ],
+    lignes: [
+      { label: 'Alertes AO par secteur', valeurs: ['—', '1 secteur', '3 secteurs'] },
+      { label: 'Analyse d\'éligibilité', valeurs: ['✓', '✓', '✓'] },
+      { label: 'Constitution dossier', valeurs: ['✓', '2 dossiers/mois', '4 dossiers/mois'] },
+      { label: 'Note méthodologique', valeurs: ['✓', '✓', '✓'] },
+      { label: 'CV experts + références', valeurs: ['✓', '✓', '✓'] },
+      { label: 'Vérification conformité', valeurs: ['✓', '✓', '✓'] },
+      { label: 'Modèles réutilisables', valeurs: ['—', '✓', '✓'] },
+      { label: 'Accompagnement prioritaire', valeurs: ['—', '—', '✓'] },
+      { label: 'Archives AO (base de données)', valeurs: ['—', 'Limité', 'Complet'] },
+    ],
+    note: 'L\'abonnement annuel représente une économie de 30 % par rapport à l\'abonnement mensuel. Il inclut un accompagnement prioritaire et l\'accès complet à la base de données des AO archivés.',
+  } as PacksSection,
+
+  secteurs: [
+    { secteur: 'BTP & Infrastructure', sources: 'Ministère des TP, BAD, Banque Mondiale, communes' },
+    { secteur: 'Fournitures & Services', sources: 'Ministères, hôpitaux, universités, entreprises privées' },
+    { secteur: 'Mines & Énergie', sources: 'Société des Mines, EDG, groupes miniers internationaux' },
+    { secteur: 'Technologies & Numérique', sources: 'ANASER, opérateurs télécoms, institutions financières' },
+    { secteur: 'Santé & Pharmaceutique', sources: 'Ministère de la Santé, UNICEF, OMS, PAM' },
+    { secteur: 'Agriculture & Environnement', sources: 'Ministère de l\'Agriculture, FAO, FIDA, GEF' },
+    { secteur: 'Formation & Conseil', sources: 'AGUIPE, OIT, GIZ, Enabel, instituts de formation' },
+    { secteur: 'Transport & Logistique', sources: 'Ministère des Transports, ports, aéroports' },
+  ] as SecteurLigne[],
+
+  temoignages: [
+    { nom: 'Directeur, PME BTP', ville: 'Conakry', pack: 'Mensuel', note: 5, texte: 'On nous avait toujours dit que les appels d\'offres étaient réservés aux grandes entreprises. Avec TenderPro, on a soumissionné à un marché de la commune de Ratoma et on l\'a remporté. Le dossier était irréprochable.' },
+    { nom: 'Gérante, Cabinet de Formation', ville: 'Conakry', pack: 'Par dossier', note: 5, texte: 'Je savais qu\'un appel d\'offres du PNUD correspondait à nos activités mais je ne savais pas comment monter le dossier en anglais selon leurs standards. L\'équipe Pro224 a tout géré. On a été shortlistés.' },
+    { nom: 'PDG, Société de Services', ville: 'Kindia', pack: 'Annuel', note: 5, texte: 'L\'abonnement annuel nous a permis de multiplier par 3 le nombre de marchés auxquels nous soumissionnons. Le retour sur investissement est évident. Je conseille à toute PME guinéenne sérieuse de s\'abonner.' },
+  ] as Temoignage[],
+
+  faq: [
+    { question: 'Notre entreprise est jeune et n\'a pas beaucoup de références. Peut-on quand même soumissionner ?', reponse: 'Oui. Nous identifions les appels d\'offres adaptés aux entreprises de votre taille et vous aidons à valoriser vos atouts même avec peu de références.' },
+    { question: 'Comment recevons-nous les alertes ?', reponse: 'Par email et/ou WhatsApp dès qu\'un AO correspondant à vos secteurs est publié. Vous pouvez paramétrer la fréquence (quotidien ou hebdomadaire).' },
+    { question: 'Pouvez-vous nous aider pour des appels d\'offres en anglais ou en d\'autres langues ?', reponse: 'Oui. Nous traitons les appels d\'offres des organisations internationales souvent rédigés en anglais, en français ou en espagnol.' },
+    { question: 'Garantissez-vous que notre dossier sera retenu ?', reponse: 'Nous garantissons la qualité et la conformité du dossier soumis. La décision finale appartient au comité d\'évaluation du donneur d\'ordres. Nous optimisons vos chances, pas le résultat.' },
+    { question: 'Peut-on travailler avec vous même si nous sommes basés en région (hors Conakry) ?', reponse: 'Absolument. Nous travaillons à distance avec des entreprises partout en Guinée. Toutes les échanges se font via WhatsApp, email et notre espace client sécurisé.' },
+  ] as FAQItem[],
+
+  ctaFinal: {
+    titre: 'Le prochain marché public peut être le vôtre.',
+    btnPrincipal: { label: 'S\'inscrire aux alertes AO', href: '/commander?service=tender' },
+    btnSecondaire: { label: 'Nous confier un dossier sur WhatsApp', href: '#whatsapp' },
+  } as CtaFinal,
+}
+
+export const servicesContent = { cvPro, visaCheck, jobAssist, tenderPro }
