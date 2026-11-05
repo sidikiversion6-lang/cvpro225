@@ -86,36 +86,63 @@ curl -sI http://cvpro225.com | head -3              # 301 → https://cvpro225.c
 curl -skI https://cvpro225.com | head -1            # 404 (normal : pas encore d'app)
 ```
 
-### C2. Migration — **je ne lance rien : tu exécutes chaque commande**
+### C2. Base de données — **je ne lance rien : tu exécutes chaque commande**
+
+État connu : la base ne contient que `cv_leads` et `cv_analyses_log` (aucune table Prisma).
+
+> ⚠️ `prisma migrate deploy` seul **échoue** ici avec `P3005` (« schema is not empty ») :
+> Prisma refuse d'appliquer la première migration dans un `public` non vide sans historique.
+> Procédure Prisma pour ce cas : exécuter `0_init`, l'enregistrer comme appliquée, puis `deploy`.
+> (Testé sur un Postgres reproduisant cet état.)
 
 ```bash
 cd /srv/cvpro225
 docker compose --profile migrate build migrate
+M="docker compose --profile migrate run --rm migrate"
 
-# (lecture seule) tables existantes ?
+# 0. (lecture seule) confirmer l'état : seules cv_leads / cv_analyses_log, pas de _prisma_migrations
 docker run --rm -it --env-file .env postgres:17-alpine sh -c 'psql "$DIRECT_URL" -c "\dt public.*"'
 
-# (lecture seule) état Prisma
-docker compose --profile migrate run --rm migrate npx --no-install prisma migrate status
+# 1. créer les 11 tables Prisma (contenu : prisma/migrations/0_init/migration.sql)
+$M npx --no-install prisma db execute --file prisma/migrations/0_init/migration.sql --schema prisma/schema.prisma
+
+# 2. enregistrer 0_init comme appliquée (crée _prisma_migrations)
+$M npx --no-install prisma migrate resolve --applied 0_init
+
+# 3. appliquer les migrations suivantes (1_enable_rls : RLS + REVOKE anon/authenticated)
+$M                                   # = prisma migrate deploy
+
+# 4. (lecture seule) doit afficher "Database schema is up to date!"
+$M npx --no-install prisma migrate status
 ```
 
-**Cas A — aucune table Prisma** (`User`, `commandes`, `packs`… absentes) :
+Puis, dans **Supabase → SQL Editor**, relire et exécuter dans l'ordre :
 
-```bash
-docker compose --profile migrate run --rm migrate          # = prisma migrate deploy
+1. [`supabase/sql/01_cv_tables_access.sql`](../../supabase/sql/01_cv_tables_access.sql) — supprime
+   les policies `anon` des tables `cv_*`, révoque `anon`/`authenticated`, droits `service_role`.
+   **Prérequis : `SUPABASE_SERVICE_ROLE_KEY` est dans `.env`** (l'app n'utilise plus la clé anon).
+2. [`supabase/sql/02_cv_leads_constraints.sql`](../../supabase/sql/02_cv_leads_constraints.sql) —
+   lancer d'abord l'**étape 1 (diagnostic)** seule, vérifier les doublons, puis l'**étape 2**
+   (sauvegarde `backup.cv_leads_20261105`, fusion, PK `(id)` + `UNIQUE(email)`).
+
+Vérification finale (lecture seule) : toutes les tables de `public` ont RLS actif.
+
+```sql
+SELECT relname, relrowsecurity FROM pg_class
+WHERE relnamespace = 'public'::regnamespace AND relkind = 'r' ORDER BY 1;
 ```
 
-**Cas B — tables Prisma déjà présentes** : comparer d'abord (lecture seule) ; la sortie ne doit
-contenir que des `DROP` de `cv_analyses_log` / `cv_leads` (tables hors Prisma, à **ignorer**) :
+**Seed (optionnel : compte admin, services, packs, réglages)** — idempotent ; le mot de passe
+n'apparaît ni dans l'historique shell ni dans un fichier :
 
 ```bash
-docker compose --profile migrate run --rm migrate sh -c \
-  'npx --no-install prisma migrate diff --from-url "$DIRECT_URL" --to-schema-datamodel prisma/schema.prisma --script'
-# si OK, baseline :
-docker compose --profile migrate run --rm migrate npx --no-install prisma migrate resolve --applied 0_init
+read -rs -p "Mot de passe admin (≥ 12 caractères) : " SEED_ADMIN_PASSWORD; echo; export SEED_ADMIN_PASSWORD
+docker compose --profile migrate run --rm -e SEED_ADMIN_PASSWORD migrate npx --no-install prisma db seed
+unset SEED_ADMIN_PASSWORD
 ```
 
 > ⛔ Jamais `prisma migrate dev` ni `prisma db push` sur la base Supabase.
+> Toute future migration qui crée une table doit inclure `ALTER TABLE … ENABLE ROW LEVEL SECURITY`.
 
 ### C3. Application
 
@@ -183,7 +210,8 @@ Dans le tableau de bord PayDunya (<https://paydunya.com>) :
 5. **Faire d'abord un paiement de bout en bout en mode `test`** sur le serveur (certificat
    production en place), vérifier que la commande passe à `confirmed` et que les emails partent.
 
-> ⚠️ Voir « Points bloquants » ci-dessous : le webhook actuel ne lit pas le format envoyé par PayDunya.
+> Le webhook accepte le format IPN de PayDunya (form-urlencoded) et vérifie le hash SHA-512 : une
+> `PAYDUNYA_MASTER_KEY` incorrecte se traduit par des IPN rejetés en 401 (visible dans `docker logs cvpro225-app`).
 
 ## F. Resend
 
@@ -199,13 +227,13 @@ Dans le tableau de bord PayDunya (<https://paydunya.com>) :
    domaine `cvpro225.com` uniquement, clé dédiée à la prod → `RESEND_API_KEY`.
 5. Tester : formulaire de contact + commande test → réception + en-têtes SPF/DKIM `pass`.
 
-## Points bloquants avant ouverture
+## Points corrigés (historique)
 
-1. **Webhook PayDunya** (`app/api/webhooks/paydunya/route.ts`) : il lit le corps avec
-   `request.json()`, or PayDunya envoie l'IPN en `application/x-www-form-urlencoded`
-   (`data[invoice][token]`, `data[hash]`…). La lecture échoue → aucune commande n'est jamais
-   confirmée (la page retour se contente de lire le statut en base).
-2. **RLS Supabase** : les tables Prisma sont créées dans `public` sans Row Level Security ; avec la
-   clé `anon` (publique, dans le bundle JS), l'API REST Supabase exposerait `User` (hash des mots de
-   passe), `commandes`, etc. Les politiques existantes autorisent aussi `anon` à lire **toutes**
-   les lignes de `cv_leads` et `cv_analyses_log`, et à modifier toutes celles de `cv_analyses_log`.
+- **Webhook PayDunya** : lit le form-urlencoded (et le JSON), vérifie `data.hash` = SHA-512(MASTER_KEY),
+  re-vérifie statut / montant / référence via l'API de confirmation, idempotent (pas de double email).
+  Tests : `npm test`.
+- **RLS Supabase** : migration `1_enable_rls` + `supabase/sql/01_cv_tables_access.sql` ; l'app utilise
+  la clé `service_role` côté serveur uniquement (`server-only`), plus aucune clé Supabase dans le bundle.
+- **Doublons `cv_leads`** : upsert sur `email` + `supabase/sql/02_cv_leads_constraints.sql` ;
+  `/api/cv-report` désactivé (410).
+- **Seed** : exécutable dans l'image migrator (`tsx`).
