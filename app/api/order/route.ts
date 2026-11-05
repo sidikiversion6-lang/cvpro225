@@ -4,7 +4,9 @@ import { Resend } from 'resend';
 export const runtime = 'nodejs';
 export const maxDuration = 30;
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy: instantiating at module load breaks `next build` without secrets.
+let _resend: Resend | null = null;
+const getResend = () => (_resend ??= new Resend(process.env.RESEND_API_KEY));
 
 const FROM_EMAIL = 'CVPro225 Commandes <noreply@cvpro225.com>';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'contact@cvpro225.com';
@@ -80,7 +82,7 @@ export async function POST(request: NextRequest) {
 
     const formattedPrice = new Intl.NumberFormat('fr-FR').format(packPrice);
 
-    const result = await resend.emails.send({
+    const result = await getResend().emails.send({
       from: FROM_EMAIL,
       to: [ADMIN_EMAIL],
       bcc: [ADMIN_BCC_EMAIL],

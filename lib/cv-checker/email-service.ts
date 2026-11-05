@@ -6,7 +6,9 @@ import {
   buildPlainTextVersion,
 } from './email-templates';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy: instantiating at module load breaks `next build` without secrets.
+let _resend: Resend | null = null;
+const getResend = () => (_resend ??= new Resend(process.env.RESEND_API_KEY));
 
 const FROM_EMAIL = 'CVPro225 <noreply@cvpro225.com>';
 // Nouveau flow WhatsApp-first : admin TO + BCC silencieux
@@ -40,7 +42,7 @@ export async function sendReportEmail(params: SendReportParams): Promise<{ succe
       params.score >= 50 ? `⚠️ Votre CV nécessite des améliorations (${params.score}/100)` :
       `🔴 Votre CV nécessite une refonte urgente (${params.score}/100)`;
 
-    const result = await resend.emails.send({
+    const result = await getResend().emails.send({
       from: FROM_EMAIL,
       to: params.email,
       reply_to: 'contact@cvpro225.com',
@@ -99,7 +101,7 @@ export async function sendAdminNotification(
 
     const subject = `${heatLabel} - ${params.firstName} (${params.score}/100) · ${params.sector}`;
 
-    const result = await resend.emails.send({
+    const result = await getResend().emails.send({
       from: FROM_EMAIL,
       to: ADMIN_EMAIL,
       bcc: ADMIN_BCC_EMAIL,

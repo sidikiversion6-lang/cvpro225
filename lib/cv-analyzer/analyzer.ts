@@ -2,9 +2,10 @@ import Anthropic from '@anthropic-ai/sdk';
 import { AnalysisResult } from './types';
 import { buildAnalysisPrompt } from './prompts';
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+// Lazy: instantiating at module load breaks `next build` without secrets.
+let _anthropic: Anthropic | null = null;
+const getAnthropic = () =>
+  (_anthropic ??= new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }));
 
 // Schema JSON transmis à Claude via output_config.format : garantit une sortie
 // structurée et valide. Évite le parsing fragile de JSON embarqué dans du texte.
@@ -55,7 +56,7 @@ export async function analyzeCV(
   const prompt = buildAnalysisPrompt(cvText, sector);
 
   try {
-    const message = await anthropic.messages.create({
+    const message = await getAnthropic().messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 2000,
       messages: [{ role: 'user', content: prompt }],

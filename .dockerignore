@@ -1,0 +1,33 @@
+# deps & build output (rebuilt inside the image)
+node_modules
+.next
+out
+build
+dist
+*.tsbuildinfo
+next-env.d.ts
+
+# secrets — never sent to the build context
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# VCS, tooling, OS
+.git
+.gitignore
+.claude
+.vscode
+.DS_Store
+npm-debug.log*
+
+# not needed in the image
+_backup_visa
+schema.sql
+supabase
+infra
+docker-compose*.yml
+Dockerfile
+.dockerignore
+*.md
