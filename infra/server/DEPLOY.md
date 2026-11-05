@@ -125,6 +125,14 @@ Puis, dans **Supabase → SQL Editor**, relire et exécuter dans l'ordre :
    lancer d'abord l'**étape 1 (diagnostic)** seule, vérifier les doublons, puis l'**étape 2**
    (sauvegarde `backup.cv_leads_20261105`, fusion, PK `(id)` + `UNIQUE(email)`).
 
+3. **Après vérification de `02`** (quelques jours d'utilisation, leads corrects, pas de perte) :
+   supprimer la sauvegarde, qui contient des données personnelles :
+
+   ```sql
+   SELECT count(*) FROM backup.cv_leads_20261105;   -- dernier coup d'œil
+   DROP SCHEMA backup CASCADE;
+   ```
+
 Vérification finale (lecture seule) : toutes les tables de `public` ont RLS actif.
 
 ```sql

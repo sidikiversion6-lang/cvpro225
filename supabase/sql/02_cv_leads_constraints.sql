@@ -102,4 +102,4 @@ SELECT (SELECT count(*) FROM public.cv_leads)           AS lignes_apres,
 -- c'est un journal (1 ligne par analyse réellement facturée par l'API IA,
 -- utilisée pour le rate-limit par IP). Aucune modification nécessaire.
 
--- Après validation (quelques jours) : DROP TABLE backup.cv_leads_20261105;
+-- Après vérification (quelques jours) : DROP SCHEMA backup CASCADE;  (cf. DEPLOY.md C2)

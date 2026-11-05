@@ -45,6 +45,45 @@ BEGIN
   END LOOP;
 END $$;
 
+-- Séquences liées à ces tables (colonnes serial/identity) : aucune aujourd'hui
+-- (identifiants cuid), boucle générique pour les futures colonnes autoincrement.
+DO $$
+DECLARE
+  r text;
+  seq regclass;
+BEGIN
+  FOREACH r IN ARRAY ARRAY['anon', 'authenticated'] LOOP
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = r) THEN
+      FOR seq IN
+        SELECT DISTINCT d.objid::regclass
+        FROM pg_depend d
+        JOIN pg_class s ON s.oid = d.objid AND s.relkind = 'S'
+        JOIN pg_class t ON t.oid = d.refobjid
+        WHERE d.deptype IN ('a', 'i')
+          AND t.relnamespace = 'public'::regnamespace
+          AND t.relname IN ('User', 'Account', 'Session', 'VerificationToken', 'commandes',
+                            'service_configs', 'packs', 'pack_features', 'site_configs',
+                            'notifications', 'messages', '_prisma_migrations')
+      LOOP
+        EXECUTE format('REVOKE ALL ON SEQUENCE %s FROM %I', seq, r);
+      END LOOP;
+    END IF;
+  END LOOP;
+END $$;
+
+-- Privilèges par défaut : le rôle qui exécute les migrations (= celui qui crée
+-- les tables Prisma, `postgres` sur Supabase) n'accordera plus rien à
+-- anon/authenticated sur ses FUTURES tables et séquences de `public`.
+-- Annule le `GRANT ALL ... TO anon, authenticated` posé par Supabase pour ce rôle.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon')
+     AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    EXECUTE format('ALTER DEFAULT PRIVILEGES FOR ROLE %I IN SCHEMA public REVOKE ALL ON TABLES FROM anon, authenticated', current_user);
+    EXECUTE format('ALTER DEFAULT PRIVILEGES FOR ROLE %I IN SCHEMA public REVOKE ALL ON SEQUENCES FROM anon, authenticated', current_user);
+  END IF;
+END $$;
+
 -- La table d'historique Prisma est aussi exposée par défaut : RLS sans policy.
 DO $$
 BEGIN

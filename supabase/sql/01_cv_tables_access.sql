@@ -54,11 +54,9 @@ WHERE table_schema = 'public' AND table_name IN ('cv_leads', 'cv_analyses_log')
   AND grantee IN ('anon', 'authenticated', 'service_role')
 GROUP BY table_name, grantee ORDER BY table_name, grantee;
 
--- -------------------------------------------------------------
--- OPTIONNEL (recommandé) : ne plus accorder automatiquement anon/authenticated
--- sur les FUTURES tables créées par postgres dans public (Prisma, dashboard).
--- À ne pas appliquer si tu prévois des tables lues directement par le navigateur.
--- -------------------------------------------------------------
--- ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE ALL ON TABLES    FROM anon, authenticated;
--- ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE ALL ON SEQUENCES FROM anon, authenticated;
--- ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE ALL ON FUNCTIONS FROM anon, authenticated;
+-- Privilèges par défaut des FUTURES tables/séquences : gérés par la migration
+-- Prisma 1_enable_rls (ALTER DEFAULT PRIVILEGES FOR ROLE <rôle des migrations>).
+-- Vérification (lecture seule) — attendu : aucune ligne mentionnant anon/authenticated
+SELECT pg_get_userbyid(defaclrole) AS pour_role, defaclobjtype AS type, defaclacl
+FROM pg_default_acl
+WHERE defaclnamespace = 'public'::regnamespace;
