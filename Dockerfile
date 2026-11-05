@@ -58,6 +58,13 @@ RUN groupadd --system --gid 1001 nodejs \
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# pdf-parse / pdfjs-dist (externes, cf. next.config) chargent dynamiquement
+# pdf.worker.mjs et @napi-rs/canvas (DOMMatrix…) : le traçage standalone ne les
+# voit pas -> sans ces copies, l'extraction PDF du CV Checker échoue en prod.
+# Le binaire canvas de la bonne architecture a été installé par `npm ci` (étape deps).
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/pdf-parse  ./node_modules/pdf-parse
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/pdfjs-dist ./node_modules/pdfjs-dist
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@napi-rs   ./node_modules/@napi-rs
 
 USER nextjs
 EXPOSE 3000
