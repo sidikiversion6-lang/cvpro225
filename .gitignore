@@ -40,3 +40,6 @@ next-env.d.ts
 infra/traefik/.env
 infra/traefik/letsencrypt/*
 !infra/traefik/letsencrypt/.gitkeep
+
+# état local des déploiements (serveur)
+.deploy/
