@@ -1,4 +1,4 @@
-import { supabase } from './supabase-client';
+import { getSupabaseAdmin } from './supabase-client';
 
 // Whitelist : IPs jamais rate-limited (tests admin)
 const WHITELIST_IPS: string[] = [
@@ -72,7 +72,7 @@ export async function checkAnalyzeRateLimit(ip: string): Promise<RateLimitResult
   const since = new Date();
   since.setHours(since.getHours() - RATE_LIMIT_HOURS);
 
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseAdmin()
     .from('cv_analyses_log')
     .select('id, created_at')
     .eq('ip_address', ip)
@@ -110,7 +110,7 @@ export async function checkEmailRateLimit(email: string): Promise<RateLimitResul
   const since = new Date();
   since.setHours(since.getHours() - RATE_LIMIT_HOURS);
 
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseAdmin()
     .from('cv_leads')
     .select('id, created_at')
     .eq('email', normalizedEmail)
@@ -158,7 +158,7 @@ export async function logAnalysis(data: {
   level?: string;
   word_count?: number;
 }): Promise<{ id?: number; error?: string }> {
-  const { data: result, error } = await supabase
+  const { data: result, error } = await getSupabaseAdmin()
     .from('cv_analyses_log')
     .insert({
       ip_address: data.ip_address,
@@ -189,7 +189,7 @@ export async function markAnalysisCompleted(ip: string, email: string): Promise<
   const since = new Date();
   since.setHours(since.getHours() - RATE_LIMIT_HOURS);
 
-  const { data: analyses, error: selectError } = await supabase
+  const { data: analyses, error: selectError } = await getSupabaseAdmin()
     .from('cv_analyses_log')
     .select('id')
     .eq('ip_address', ip)
@@ -204,7 +204,7 @@ export async function markAnalysisCompleted(ip: string, email: string): Promise<
   }
 
   if (analyses && analyses.length > 0) {
-    const { error: updateError } = await supabase
+    const { error: updateError } = await getSupabaseAdmin()
       .from('cv_analyses_log')
       .update({ completed: true, email: email.toLowerCase().trim() })
       .eq('id', analyses[0].id);

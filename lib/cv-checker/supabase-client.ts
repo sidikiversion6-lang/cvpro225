@@ -1,13 +1,30 @@
-import { createClient } from '@supabase/supabase-js';
+import 'server-only';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+/**
+ * Client Supabase SERVEUR (clé service_role, contourne RLS).
+ *
+ * Les tables cv_leads / cv_analyses_log ne sont accessibles qu'au service_role :
+ * aucune policy pour anon/authenticated. `server-only` fait échouer le build si
+ * ce module est importé par un composant client — la clé ne peut pas fuiter
+ * dans le bundle navigateur.
+ *
+ * Instanciation paresseuse : `next build` ne doit pas exiger les secrets.
+ */
+let _client: SupabaseClient | null = null;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Variables Supabase manquantes dans .env.local');
+export function getSupabaseAdmin(): SupabaseClient {
+  if (_client) return _client;
+  const url = process.env.SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceRoleKey) {
+    throw new Error('SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY manquants');
+  }
+  _client = createClient(url, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  return _client;
 }
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export interface CVLead {
   email: string;
@@ -40,12 +57,10 @@ export async function saveLead(lead: CVLead): Promise<{ success: boolean; error?
     if (lead.first_name) insertRow.first_name = lead.first_name;
     if (lead.whatsapp_number) insertRow.whatsapp_number = lead.whatsapp_number;
 
-    // .select() forcé pour que les violations RLS remontent en erreur
-    // (sans ça, return=minimal masque les 42501 → insert silencieusement KO)
-    const { data, error } = await supabase
+    const { data, error } = await getSupabaseAdmin()
       .from('cv_leads')
       .insert([insertRow])
-      .select();
+      .select('id');
 
     if (error) {
       console.error('[Supabase] Erreur insertion:', error);
@@ -53,8 +68,8 @@ export async function saveLead(lead: CVLead): Promise<{ success: boolean; error?
     }
 
     if (!data || data.length === 0) {
-      console.error('[Supabase] Insert sans erreur mais aucune ligne créée — RLS à vérifier');
-      return { success: false, error: 'RLS policy blocks anon INSERT on cv_leads' };
+      console.error('[Supabase] Insert sans erreur mais aucune ligne créée');
+      return { success: false, error: 'cv_leads insert returned no row' };
     }
 
     return { success: true };

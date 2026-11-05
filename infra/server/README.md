@@ -35,9 +35,9 @@ toute modification impose un rebuild (`docker compose up -d --build`).
 | ☐ | 🔨 `NEXT_PUBLIC_APP_URL` | `https://cvpro225.com` (sans `/` final) |
 | ☐ | 🔨 `NEXT_PUBLIC_WHATSAPP` | numéro affiché sur le site |
 | ☐ | 🔨 `NEXT_PUBLIC_EMAIL` | `contact@cvpro225.com` |
-| ☐ | 🔨 `NEXT_PUBLIC_SUPABASE_URL` | Supabase → Project Settings → API → Project URL |
-| ☐ | 🔨 `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → Project Settings → API → `anon` (publique). **Jamais** la `service_role` |
 | ☐ | 🔨 `NEXT_PUBLIC_STRAPI_URL` | optionnel, vide sinon |
+| ☐ | `SUPABASE_URL` | Supabase → Project Settings → API → Project URL |
+| ☐ | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project Settings → API → `service_role` (**secrète**, serveur uniquement, jamais en `NEXT_PUBLIC_`) |
 | ☐ | `AUTH_SECRET` | **nouvelle** valeur prod : `openssl rand -base64 32` (≠ dev). La changer déconnecte tout le monde |
 | ☐ | `AUTH_TRUST_HOST` | `true` |
 | ☐ | `NEXTAUTH_URL` | `https://cvpro225.com` |
