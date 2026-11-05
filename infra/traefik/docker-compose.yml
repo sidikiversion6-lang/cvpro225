@@ -1,0 +1,148 @@
+# =============================================================
+# Traefik v3 — reverse proxy + Let's Encrypt (HTTP-01)
+#
+# Première mise en route (sur le serveur, dans infra/traefik/) :
+#   cp .env.example .env            # puis renseigner ACME_EMAIL
+#   install -m 600 /dev/null letsencrypt/acme.json
+#   install -m 600 /dev/null letsencrypt/acme-staging.json
+#   docker network create web       # si pas déjà fait
+#   docker compose up -d
+#
+# Contrats utilisés par les apps (labels) :
+#   entrypoints : web (:80, redirige vers HTTPS) / websecure (:443)
+#   certresolver : letsencrypt
+#   réseau : web — exposedByDefault=false (traefik.enable=true requis)
+#
+# Sécurité : seul `socket-proxy` monte le socket Docker. Traefik l'interroge
+# en TCP via le réseau interne `socket-proxy` (GET containers/events/ping/
+# version uniquement, tout le reste refusé).
+# =============================================================
+
+name: traefik
+
+services:
+  socket-proxy:
+    # Version + digest épinglés
+    image: tecnativa/docker-socket-proxy:v0.5.0@sha256:1f5038b54f06c3e18422902cf00ba21803d1c97805aae032e5e6673d532d3459
+    container_name: socket-proxy
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /run
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - socket-proxy          # JAMAIS sur "web"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      # Strict minimum pour le provider Docker de Traefik
+      CONTAINERS: 1
+      EVENTS: 1
+      PING: 1
+      VERSION: 1
+      # Tout le reste explicitement refusé
+      POST: 0
+      ALLOW_START: 0
+      ALLOW_STOP: 0
+      ALLOW_RESTARTS: 0
+      ALLOW_PAUSE: 0
+      ALLOW_UNPAUSE: 0
+      AUTH: 0
+      BUILD: 0
+      COMMIT: 0
+      CONFIGS: 0
+      DISTRIBUTION: 0
+      EXEC: 0
+      GRPC: 0
+      IMAGES: 0
+      INFO: 0
+      NETWORKS: 0
+      NODES: 0
+      PLUGINS: 0
+      SECRETS: 0
+      SERVICES: 0
+      SESSION: 0
+      SWARM: 0
+      SYSTEM: 0
+      TASKS: 0
+      VOLUMES: 0
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  traefik:
+    # Version + digest épinglés. Docker Engine >= 29 exige l API >= 1.44 :
+    # Traefik < v3.6.1 est incompatible, ne pas descendre en dessous.
+    image: traefik:v3.7.17@sha256:68ae5fe5b64ca166704b746a9e8afcd385e36b3f569a5691401bf652d57b3748
+    container_name: traefik
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - socket-proxy
+    networks:
+      - web                   # trafic des apps + sortie vers Let's Encrypt
+      - socket-proxy          # accès (filtré) à l'API Docker
+    volumes:
+      # Pas de socket Docker ici : uniquement le stockage des certificats
+      - ./letsencrypt:/letsencrypt
+    command:
+      # --- Général ---
+      - --global.checknewversion=false
+      - --global.sendanonymoususage=false
+      - --log.level=${TRAEFIK_LOG_LEVEL:-INFO}
+      - --accesslog=true
+
+      # --- API / dashboard : désactivés (aucune option api.* déclarée ;
+      #     en définir une, même =false, active la section api) ---
+
+      # --- Healthcheck interne (entrypoint "traefik" :8080, non publié) ---
+      - --ping=true
+
+      # --- Entrypoints ---
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.web.http.redirections.entrypoint.permanent=true
+      - --entrypoints.websecure.address=:443
+      - --entrypoints.websecure.http.tls=true
+
+      # --- Provider Docker ---
+      - --providers.docker=true
+      - --providers.docker.endpoint=tcp://socket-proxy:2375
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.network=web
+
+      # --- Let's Encrypt (resolver "letsencrypt", challenge HTTP-01) ---
+      - --certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:?ACME_EMAIL manquant}
+      - --certificatesresolvers.letsencrypt.acme.caserver=${ACME_CA_SERVER:-https://acme-staging-v02.api.letsencrypt.org/directory}
+      - --certificatesresolvers.letsencrypt.acme.storage=${ACME_STORAGE:-/letsencrypt/acme-staging.json}
+      - --certificatesresolvers.letsencrypt.acme.httpchallenge=true
+      - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  web:
+    external: true
+  socket-proxy:
+    name: socket-proxy
+    internal: true            # aucun accès externe, ni entrant ni sortant

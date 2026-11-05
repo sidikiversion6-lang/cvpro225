@@ -67,7 +67,7 @@ services:
       - traefik.http.routers.cvpro225-www.middlewares=cvpro225-www-redirect
 
       # Middleware : www -> racine (conserve chemin et query string)
-      - traefik.http.middlewares.cvpro225-www-redirect.redirectregex.regex=^https?://www\.cvpro225\.com/(.*)
+      - traefik.http.middlewares.cvpro225-www-redirect.redirectregex.regex=^https?://www\.cvpro225\.com(?::[0-9]+)?/(.*)
       - traefik.http.middlewares.cvpro225-www-redirect.redirectregex.replacement=https://cvpro225.com/$${1}
       - traefik.http.middlewares.cvpro225-www-redirect.redirectregex.permanent=true
 
