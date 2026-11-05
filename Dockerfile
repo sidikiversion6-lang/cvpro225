@@ -42,7 +42,7 @@ RUN npx prisma generate && npm run build
 FROM deps AS migrator
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
-CMD ["npx", "prisma", "migrate", "deploy"]
+CMD ["npx", "--no-install", "prisma", "migrate", "deploy"]
 
 # ---------- 4. runner : image finale minimale ----------
 FROM node:${NODE_VERSION} AS runner

@@ -1,0 +1,98 @@
+# =============================================================
+# CVPro225 — stack applicative (derrière Traefik, cf. infra/traefik)
+#
+#   Prérequis : réseau externe `docker network create web`
+#               fichier .env à côté de ce fichier (cf. .env.example)
+#
+#   Démarrer   : docker compose up -d --build
+#   Migrations : docker compose --profile migrate run --rm migrate
+# =============================================================
+
+name: cvpro225
+
+x-build-args: &build-args
+  # Variables publiques, intégrées au bundle au build (lues depuis .env)
+  NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:?NEXT_PUBLIC_APP_URL manquant}
+  NEXT_PUBLIC_WHATSAPP: ${NEXT_PUBLIC_WHATSAPP:-}
+  NEXT_PUBLIC_EMAIL: ${NEXT_PUBLIC_EMAIL:-}
+  NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:?NEXT_PUBLIC_SUPABASE_URL manquant}
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:?NEXT_PUBLIC_SUPABASE_ANON_KEY manquant}
+  NEXT_PUBLIC_STRAPI_URL: ${NEXT_PUBLIC_STRAPI_URL:-}
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  app:
+    build:
+      context: .
+      target: runner
+      args: *build-args
+    image: cvpro225-app:${IMAGE_TAG:-latest}
+    container_name: cvpro225-app
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      AUTH_TRUST_HOST: "true"
+    networks:
+      - web
+    logging: *logging
+    security_opt:
+      - no-new-privileges:true
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=web
+
+      # Service : port interne de Next.js
+      - traefik.http.services.cvpro225.loadbalancer.server.port=3000
+
+      # Routeur principal : cvpro225.com
+      - traefik.http.routers.cvpro225.rule=Host(`cvpro225.com`)
+      - traefik.http.routers.cvpro225.entrypoints=websecure
+      - traefik.http.routers.cvpro225.tls=true
+      - traefik.http.routers.cvpro225.tls.certresolver=letsencrypt
+      - traefik.http.routers.cvpro225.service=cvpro225
+      - traefik.http.routers.cvpro225.middlewares=cvpro225-headers,cvpro225-compress
+
+      # Routeur www : obtient son propre certificat puis redirige (301) vers la racine
+      - traefik.http.routers.cvpro225-www.rule=Host(`www.cvpro225.com`)
+      - traefik.http.routers.cvpro225-www.entrypoints=websecure
+      - traefik.http.routers.cvpro225-www.tls=true
+      - traefik.http.routers.cvpro225-www.tls.certresolver=letsencrypt
+      - traefik.http.routers.cvpro225-www.service=cvpro225
+      - traefik.http.routers.cvpro225-www.middlewares=cvpro225-www-redirect
+
+      # Middleware : www -> racine (conserve chemin et query string)
+      - traefik.http.middlewares.cvpro225-www-redirect.redirectregex.regex=^https?://www\.cvpro225\.com/(.*)
+      - traefik.http.middlewares.cvpro225-www-redirect.redirectregex.replacement=https://cvpro225.com/$${1}
+      - traefik.http.middlewares.cvpro225-www-redirect.redirectregex.permanent=true
+
+      # Middleware : en-têtes de sécurité
+      - traefik.http.middlewares.cvpro225-headers.headers.stsSeconds=31536000
+      - traefik.http.middlewares.cvpro225-headers.headers.stsIncludeSubdomains=true
+      - traefik.http.middlewares.cvpro225-headers.headers.contentTypeNosniff=true
+      - traefik.http.middlewares.cvpro225-headers.headers.frameDeny=true
+      - traefik.http.middlewares.cvpro225-headers.headers.referrerPolicy=strict-origin-when-cross-origin
+
+      # Middleware : compression gzip/brotli
+      - traefik.http.middlewares.cvpro225-compress.compress=true
+
+  # One-shot : applique les migrations Prisma (jamais démarré par `up`)
+  migrate:
+    profiles: ["migrate"]
+    build:
+      context: .
+      target: migrator
+    image: cvpro225-migrator:${IMAGE_TAG:-latest}
+    env_file: .env
+    restart: "no"
+    logging: *logging
+    # Réseau par défaut du projet : accès sortant vers Supabase, pas exposé à Traefik
+
+networks:
+  web:
+    external: true
