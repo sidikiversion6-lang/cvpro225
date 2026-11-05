@@ -16,6 +16,19 @@ set -uo pipefail
 umask 077
 ulimit -c 0 2>/dev/null || true
 
+# Mode import (non interactif) : fill-env.sh --import < fichier_dotenv
+#   Lit des lignes VAR=valeur sur stdin ; ne traite que les variables pas prêtes,
+#   mêmes validations, une valeur invalide est ignorée (jamais affichée).
+IMPORT=0
+declare -A IMP=()
+if [[ "${1:-}" == --import ]]; then
+  IMPORT=1
+  while IFS= read -r l || [[ -n "$l" ]]; do
+    [[ "$l" =~ ^([A-Z][A-Z0-9_]*)=(.*)$ ]] && IMP["${BASH_REMATCH[1]}"]="${BASH_REMATCH[2]}"
+  done
+  l=""
+fi
+
 APP_DIR="${APP_DIR:-/srv/cvpro225}"
 CHECK="$APP_DIR/infra/server/check-env.sh"
 cd "$APP_DIR" || { echo "Dossier introuvable : $APP_DIR" >&2; exit 1; }
@@ -201,7 +214,9 @@ for item in ${TODO[@]+"${TODO[@]}"}; do
   echo "  ${D}Format : $EXAMPLE${N}"
   while :; do
     VALUE=""
-    if (( SECRET )); then
+    if (( IMPORT )); then
+      VALUE="${IMP[$var]-}"
+    elif (( SECRET )); then
       read -rsp "  Valeur (masquée) : " VALUE; echo
     else
       read -rp  "  Valeur : " VALUE
@@ -211,7 +226,10 @@ for item in ${TODO[@]+"${TODO[@]}"}; do
     [[ "$VALUE" == "$var="* ]] && VALUE="${VALUE#"$var="}"
     if [[ "$VALUE" == \"*\" || "$VALUE" == \'*\' ]] && (( ${#VALUE} >= 2 )); then VALUE="${VALUE:1:${#VALUE}-2}"; fi
 
-    if [[ -z "$VALUE" ]]; then echo "  ${Y}→ passée${N}"; skipped=$((skipped+1)); break; fi
+    if [[ -z "$VALUE" ]]; then
+      (( IMPORT )) && echo "  ${Y}→ absente de l'import, passée${N}" || echo "  ${Y}→ passée${N}"
+      skipped=$((skipped+1)); break
+    fi
     if [[ "$var" == AUTH_SECRET && "$VALUE" == gen ]]; then
       VALUE="$(openssl rand -base64 32 2>/dev/null || head -c 32 /dev/urandom | base64)"
       [[ ${#VALUE} -ge 32 ]] || { echo "  ${R}génération impossible${N}"; continue; }
@@ -223,6 +241,7 @@ for item in ${TODO[@]+"${TODO[@]}"}; do
     if [[ -n "$ERR" ]]; then
       if (( SECRET )); then echo "  ${R}✗ $ERR${N} ${D}(reçu ${#VALUE} car.)${N} — recommencez ou Entrée pour passer."
       else echo "  ${R}✗ $ERR${N} — recommencez ou Entrée pour passer."; fi
+      (( IMPORT )) && { echo "  ${Y}→ valeur importée invalide, passée${N}"; skipped=$((skipped+1)); break; }
       continue
     fi
 
