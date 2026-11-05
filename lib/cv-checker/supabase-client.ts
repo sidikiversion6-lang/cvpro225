@@ -40,11 +40,16 @@ export interface CVLead {
   whatsapp_number?: string;
 }
 
+/**
+ * Un lead = une personne (email unique, contrainte cv_leads_email_key).
+ * Upsert : une nouvelle soumission met à jour l'analyse de la ligne existante
+ * au lieu d'en créer une seconde. Les colonnes CRM (contacted, notes) et
+ * created_at (premier contact) ne sont jamais écrasées.
+ */
 export async function saveLead(lead: CVLead): Promise<{ success: boolean; error?: string }> {
   try {
-    // Colonnes ajoutées conditionnellement (compat si la colonne n'existe pas encore)
-    const insertRow: Record<string, unknown> = {
-      email: lead.email,
+    const row: Record<string, unknown> = {
+      email: lead.email.trim().toLowerCase(),
       cv_filename: lead.cv_filename,
       sector: lead.sector,
       score: lead.score,
@@ -53,25 +58,23 @@ export async function saveLead(lead: CVLead): Promise<{ success: boolean; error?
       analysis_data: lead.analysis_data,
       report_sent: lead.report_sent || false,
     };
-    if (lead.ip_address) insertRow.ip_address = lead.ip_address;
-    if (lead.first_name) insertRow.first_name = lead.first_name;
-    if (lead.whatsapp_number) insertRow.whatsapp_number = lead.whatsapp_number;
+    if (lead.ip_address) row.ip_address = lead.ip_address;
+    if (lead.first_name) row.first_name = lead.first_name;
+    if (lead.whatsapp_number) row.whatsapp_number = lead.whatsapp_number;
 
     const { data, error } = await getSupabaseAdmin()
       .from('cv_leads')
-      .insert([insertRow])
+      .upsert(row, { onConflict: 'email' })
       .select('id');
 
     if (error) {
-      console.error('[Supabase] Erreur insertion:', error);
+      console.error('[Supabase] Erreur upsert cv_leads:', error);
       return { success: false, error: error.message };
     }
-
     if (!data || data.length === 0) {
-      console.error('[Supabase] Insert sans erreur mais aucune ligne créée');
-      return { success: false, error: 'cv_leads insert returned no row' };
+      console.error('[Supabase] Upsert cv_leads sans ligne retournée');
+      return { success: false, error: 'cv_leads upsert returned no row' };
     }
-
     return { success: true };
   } catch (err: any) {
     console.error('[Supabase] Exception:', err);
