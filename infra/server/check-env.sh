@@ -58,14 +58,31 @@ check $E DATABASE_URL               '^postgres(ql)?://.+:6543/.+pgbouncer=true' 
 check $E DIRECT_URL                 '^postgres(ql)?://.+:5432/'               'port 5432'
 check $E RESEND_API_KEY             '^re_'                                    'commence par re_'
 check $E ADMIN_EMAIL                '^[^@[:space:]]+@[^@[:space:]]+$'         'email'
-check $E PAYDUNYA_MASTER_KEY
-check $E PAYDUNYA_PRIVATE_KEY
-check $E PAYDUNYA_TOKEN
 check $E PAYDUNYA_MODE              '^(test|live)$'                           'test|live'
 check $E PAYDUNYA_WEBHOOK_URL       '^https://cvpro225\.com/api/webhooks/paydunya$' 'URL webhook prod'
 check $E ANTHROPIC_API_KEY          '^sk-ant-'                                'commence par sk-ant-'
 check $E CV_ANALYSIS_IP_LIMIT       '^[0-9]+$'                                'entier'
 check $E CV_ANALYSIS_GLOBAL_DAILY_LIMIT '^[0-9]+$'                            'entier'
+echo "== .env (app) — PayDunya (optionnel)"
+# Les 3 clés vides = paiement en ligne désactivé (accepté, avec avertissement).
+# Partiellement renseigné = incohérent -> erreur.
+pd_set=0
+for v in PAYDUNYA_MASTER_KEY PAYDUNYA_PRIVATE_KEY PAYDUNYA_TOKEN; do
+  [[ -n "$(val "$v" "$E")" ]] && pd_set=$((pd_set+1))
+done
+if (( pd_set == 0 )); then
+  for v in PAYDUNYA_MASTER_KEY PAYDUNYA_PRIVATE_KEY PAYDUNYA_TOKEN; do
+    printf '  %-34s %s\n' "$v" "vide (optionnelle)"
+  done
+  echo "  AVERTISSEMENT : PayDunya non configuré — paiement en ligne désactivé"
+  echo "                  (les clients voient « Paiement en ligne bientôt disponible »)."
+else
+  check $E PAYDUNYA_MASTER_KEY '^[A-Za-z0-9_-]{10,}$'          '≥ 10 car. alphanumériques'
+  check $E PAYDUNYA_PRIVATE_KEY '^(test|live)_private_'        'test_private_… ou live_private_…'
+  check $E PAYDUNYA_TOKEN       '^[A-Za-z0-9_-]{10,}$'          '≥ 10 car. alphanumériques'
+  (( pd_set < 3 )) && echo "  PayDunya partiellement configuré : renseignez les 3 clés ou videz-les toutes."
+fi
+
 echo "== .env (app) — optionnelles"
 for v in ADMIN_BCC_EMAIL NEXT_PUBLIC_STRAPI_URL STRAPI_URL STRAPI_API_TOKEN GOOGLE_VERIFICATION CV_RATE_LIMIT_WHITELIST SEED_ADMIN_PASSWORD; do
   optional $E "$v"

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { checkPaydunyaStatus } from '@/lib/paydunya'
+import { checkPaydunyaStatus, isPaydunyaConfigured } from '@/lib/paydunya'
 import { handlePaydunyaIpn, type IpnStatus } from '@/lib/paydunya-ipn'
 import { sendConfirmationEmail, sendAdminNotification } from '@/lib/resend'
 
@@ -8,6 +8,10 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
+  // PayDunya non configuré : aucun IPN ne peut être authentique (pas de MASTER_KEY).
+  if (!isPaydunyaConfigured()) {
+    return NextResponse.json({ received: false, outcome: 'paydunya_not_configured' }, { status: 503 })
+  }
   try {
     const raw = await request.text()
 

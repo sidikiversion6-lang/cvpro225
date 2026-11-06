@@ -5,6 +5,8 @@
 # d'après la sortie de infra/server/check-env.sh (VIDE / gabarit / FORMAT ?).
 #
 #   ~/bin/fill-env.sh                 (APP_DIR par défaut : /srv/cvpro225)
+#   ~/bin/fill-env.sh --paydunya      demande aussi les 3 clés PayDunya (optionnelles)
+#   ~/bin/fill-env.sh --import < f    import non interactif de lignes VAR=valeur
 #
 # - Secrets saisis en masqué (read -rs), le reste en clair.
 # - Entrée vide = passer la variable ; relancer le script plus tard.
@@ -19,10 +21,18 @@ ulimit -c 0 2>/dev/null || true
 # Mode import (non interactif) : fill-env.sh --import < fichier_dotenv
 #   Lit des lignes VAR=valeur sur stdin ; ne traite que les variables pas prêtes,
 #   mêmes validations, une valeur invalide est ignorée (jamais affichée).
-IMPORT=0
+# PayDunya est optionnel : ses 3 clés ne sont demandées que si elles sont
+# partiellement remplies, ou avec  fill-env.sh --paydunya.
+IMPORT=0; WANT_PD=0
 declare -A IMP=()
-if [[ "${1:-}" == --import ]]; then
-  IMPORT=1
+for a in "$@"; do
+  case "$a" in
+    --import) IMPORT=1 ;;
+    --paydunya) WANT_PD=1 ;;
+    *) echo "Option inconnue : $a (options : --import, --paydunya)" >&2; exit 2 ;;
+  esac
+done
+if (( IMPORT )); then
   while IFS= read -r l || [[ -n "$l" ]]; do
     [[ "$l" =~ ^([A-Z][A-Z0-9_]*)=(.*)$ ]] && IMP["${BASH_REMATCH[1]}"]="${BASH_REMATCH[2]}"
   done
@@ -180,10 +190,11 @@ extra_checks() {
 
 # ---------- variables à traiter, d'après check-env.sh ----------
 TODO=()   # éléments "fichier|VAR|statut"
-section=""
+section=""; pd=0
 while IFS= read -r line; do
   case "$line" in
-    "== .env (app) — requises"*) section=".env" ;;
+    "== .env (app) — requises"*) section=".env"; pd=0 ;;
+    "== .env (app) — PayDunya"*) section=".env"; pd=1 ;;
     "== .env (app)"*)            section="" ;;      # optionnelles : ignorées
     "== infra/traefik/.env"*)    section="infra/traefik/.env" ;;
     "=="*)                       section="" ;;
@@ -191,6 +202,8 @@ while IFS= read -r line; do
       [[ -z "$section" ]] && continue
       if [[ "$line" =~ ^\ \ ([A-Z][A-Z0-9_]*)\ +(VIDE|À\ REMPLACER.*|FORMAT\ \?.*)$ ]]; then
         TODO+=("$section|${BASH_REMATCH[1]}|${BASH_REMATCH[2]}")
+      elif (( pd && WANT_PD )) && [[ "$line" =~ ^\ \ (PAYDUNYA_[A-Z_]+)\ +vide\ \(optionnelle\)$ ]]; then
+        TODO+=("$section|${BASH_REMATCH[1]}|vide (PayDunya)")
       fi ;;
   esac
 done < <(APP_DIR="$APP_DIR" bash "$CHECK" 2>/dev/null)

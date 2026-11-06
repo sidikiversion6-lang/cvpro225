@@ -5,7 +5,14 @@ import { auth } from '@/lib/auth'
 import { generateRef } from '@/lib/commande-config'
 import { PRIX_PACKS, LABELS_SERVICE, LABELS_PACK } from '@/types/commande'
 import { sendConfirmationEmail, sendAdminNotification, sendEmailVirement } from '@/lib/resend'
-import { createPaydunyaInvoice, buildPaydunyaParams } from '@/lib/paydunya'
+import {
+  createPaydunyaInvoice,
+  buildPaydunyaParams,
+  isPaydunyaConfigured,
+  paymentUnavailableBody,
+} from '@/lib/paydunya'
+
+const ONLINE_PAYMENT_MODES = ['orange_money', 'mtn_momo', 'paydunya']
 
 const schema = z.object({
   service: z.enum(['cv', 'visa', 'job', 'tender']),
@@ -32,8 +39,15 @@ export async function POST(request: Request) {
       )
     }
 
-    const session = await auth()
     const data = parsed.data
+
+    // Paiement en ligne demandé mais PayDunya pas configuré : on refuse proprement
+    // AVANT de créer la commande (pas de commande "pending" orpheline).
+    if (ONLINE_PAYMENT_MODES.includes(data.mode_paiement || '') && !isPaydunyaConfigured()) {
+      return NextResponse.json(paymentUnavailableBody(), { status: 503 })
+    }
+
+    const session = await auth()
     const ref = generateRef()
     const montant = PRIX_PACKS[data.pack] || 0
 
@@ -70,7 +84,7 @@ export async function POST(request: Request) {
     }
 
     // Paiement via PayDunya (Orange Money, MTN MoMo, PayDunya)
-    if (['orange_money', 'mtn_momo', 'paydunya'].includes(data.mode_paiement || '')) {
+    if (ONLINE_PAYMENT_MODES.includes(data.mode_paiement || '')) {
       try {
         const serviceLabel = LABELS_SERVICE[data.service as keyof typeof LABELS_SERVICE] || data.service
         const packLabel = LABELS_PACK[data.pack] || data.pack

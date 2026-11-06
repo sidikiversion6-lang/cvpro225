@@ -28,7 +28,7 @@ export default function OrderForm() {
   const [pack, setPack] = useState<PackType | ''>(initPack)
   const [paiement, setPaiement] = useState<ModePaiement | ''>('')
   const [cgv, setCgv] = useState(false)
-  const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
+  const [status, setStatus] = useState<'idle' | 'loading' | 'error' | 'payment_unavailable'>('idle')
 
   const [form, setForm] = useState({
     prenom: '', nom: '', email: '', telephone: '', ville: '', message: '',
@@ -82,6 +82,10 @@ export default function OrderForm() {
         }),
       })
       const json = await res.json()
+      if (json.code === 'PAYMENT_UNAVAILABLE') {
+        setStatus('payment_unavailable')
+        return
+      }
       if (!res.ok || !json.success) throw new Error(json.error)
 
       if (json.requires_payment && json.checkout_url) {
@@ -417,7 +421,7 @@ export default function OrderForm() {
                 return (
                   <button
                     key={p.key}
-                    onClick={() => setPaiement(p.key)}
+                    onClick={() => { setPaiement(p.key); setStatus('idle') }}
                     className={`flex items-center gap-3 rounded-xl border-2 p-4 transition-all ${
                       active ? 'shadow-sm' : 'border-gray-200 hover:border-gray-300'
                     }`}
@@ -453,6 +457,16 @@ export default function OrderForm() {
               <Link href="/confidentialite" className="font-medium text-primary hover:underline">Politique de confidentialité</Link>
             </span>
           </label>
+
+          {status === 'payment_unavailable' && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              Paiement en ligne bientôt disponible. Contactez-nous sur{' '}
+              <a href={`https://wa.me/${WHATSAPP.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" className="font-semibold underline">
+                WhatsApp
+              </a>{' '}
+              pour finaliser votre commande, ou choisissez le virement.
+            </div>
+          )}
 
           {status === 'error' && (
             <div className="rounded-xl border border-rouge/20 bg-rouge/5 px-4 py-3 text-sm text-rouge">

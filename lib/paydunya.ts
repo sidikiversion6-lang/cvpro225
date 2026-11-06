@@ -60,7 +60,41 @@ const PAYDUNYA_BASE_URL = {
   live: 'https://app.paydunya.com/api/v1',
 }
 
+/**
+ * PayDunya est optionnel : sans les 3 clés, le paiement en ligne est désactivé
+ * (aucun appel à l'API) et les routes renvoient PAYMENT_UNAVAILABLE.
+ */
+export function isPaydunyaConfigured(): boolean {
+  return Boolean(
+    process.env.PAYDUNYA_MASTER_KEY?.trim() &&
+      process.env.PAYDUNYA_PRIVATE_KEY?.trim() &&
+      process.env.PAYDUNYA_TOKEN?.trim()
+  )
+}
+
+export const PAYMENT_UNAVAILABLE_CODE = 'PAYMENT_UNAVAILABLE'
+export const PAYMENT_UNAVAILABLE_MESSAGE =
+  'Paiement en ligne bientôt disponible. Contactez-nous sur WhatsApp pour finaliser votre commande.'
+
+export class PaydunyaNotConfiguredError extends Error {
+  constructor() {
+    super('PayDunya non configuré')
+    this.name = 'PaydunyaNotConfiguredError'
+  }
+}
+
+/** Corps + statut HTTP renvoyés quand le paiement en ligne est indisponible. */
+export function paymentUnavailableBody() {
+  return {
+    success: false,
+    code: PAYMENT_UNAVAILABLE_CODE,
+    error: PAYMENT_UNAVAILABLE_MESSAGE,
+    whatsapp: process.env.NEXT_PUBLIC_WHATSAPP || '',
+  }
+}
+
 function getConfig(): PaydunyaConfig {
+  if (!isPaydunyaConfigured()) throw new PaydunyaNotConfiguredError()
   return {
     masterKey: process.env.PAYDUNYA_MASTER_KEY || '',
     privateKey: process.env.PAYDUNYA_PRIVATE_KEY || '',

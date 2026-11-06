@@ -1,13 +1,21 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
-import { buildPaydunyaParams, createPaydunyaInvoice } from '@/lib/paydunya'
+import {
+  buildPaydunyaParams,
+  createPaydunyaInvoice,
+  isPaydunyaConfigured,
+  paymentUnavailableBody,
+} from '@/lib/paydunya'
 
 const schema = z.object({
   commande_id: z.string().min(1, 'ID commande requis'),
 })
 
 export async function POST(request: Request) {
+  if (!isPaydunyaConfigured()) {
+    return NextResponse.json(paymentUnavailableBody(), { status: 503 })
+  }
   try {
     const body = await request.json()
     const parsed = schema.safeParse(body)
