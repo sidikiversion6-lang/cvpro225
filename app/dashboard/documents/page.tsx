@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation'
+import { ligneCommande } from '@/lib/commande-detail'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { LABELS_SERVICE, LABELS_PACK, SERVICE_COLORS } from '@/types/commande'
+import { SERVICE_COLORS } from '@/types/commande'
 
 const EMOJIS: Record<string, string> = { cv: '📄', visa: '🛂', job: '💼', tender: '📋' }
 
@@ -39,7 +40,7 @@ export default async function DocumentsPage() {
                   {emoji}
                 </div>
                 <h3 className="font-heading text-sm font-bold text-dark">
-                  {LABELS_SERVICE[d.service as keyof typeof LABELS_SERVICE]} — {LABELS_PACK[d.pack] || d.pack}
+                  {ligneCommande(d).libelle}
                 </h3>
                 {date && <p className="mt-1 text-xs text-gray-400">Livré le {date}</p>}
                 <p className="text-xs text-gray-400">Réf: {d.ref}</p>

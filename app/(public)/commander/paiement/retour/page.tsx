@@ -10,6 +10,7 @@ function RetourContent() {
   const params = useSearchParams()
   const ref = params.get('ref') || ''
   const [statut, setStatut] = useState<'loading' | 'confirmed' | 'pending'>('loading')
+  const [infos, setInfos] = useState<{ aUnCv: boolean | null; emailFourni: boolean }>({ aUnCv: null, emailFourni: false })
 
   useEffect(() => {
     if (!ref) { setStatut('pending'); return }
@@ -19,6 +20,7 @@ function RetourContent() {
         const res = await fetch(`/api/commandes/status?ref=${ref}`)
         const json = await res.json()
         setStatut(json.statut === 'confirmed' ? 'confirmed' : 'pending')
+        setInfos({ aUnCv: typeof json.a_un_cv === 'boolean' ? json.a_un_cv : null, emailFourni: json.email_fourni === true })
       } catch {
         setStatut('pending')
       }
@@ -49,7 +51,12 @@ function RetourContent() {
           <div className="mx-auto mt-6 inline-block rounded-xl bg-gray-200 px-6 py-3 font-mono text-lg font-bold text-dark">
             Réf : {ref}
           </div>
-          <p className="mt-3 text-sm text-gray-400">Un email de confirmation a été envoyé à votre adresse.</p>
+          {infos.emailFourni && <p className="mt-3 text-sm text-gray-400">Un reçu de paiement a été envoyé à votre adresse email.</p>}
+          {infos.aUnCv === false && (
+            <p className="mx-auto mt-6 max-w-md rounded-xl border-l-4 border-primary bg-primary/5 p-4 text-left text-dark">
+              Un conseiller vous contacte sur WhatsApp pour recueillir vos informations et rédiger votre CV.
+            </p>
+          )}
 
           <div className="mx-auto mt-10 max-w-sm text-left">
             <div className="relative space-y-6 pl-8">

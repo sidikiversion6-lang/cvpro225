@@ -26,7 +26,7 @@ export default function DashboardHeader({ user, unreadCount = 0 }: Props) {
     <>
       <header className="flex h-16 items-center justify-between border-b border-gray-100 bg-white px-4 lg:hidden">
         <Link href="/" className="text-lg font-extrabold">
-          <span className="text-dark">Pro</span><span className="text-primary">224</span>
+          <span className="text-dark">CVPro</span><span className="text-primary">225</span>
         </Link>
         <button onClick={() => setOpen(!open)} className="flex h-10 w-10 flex-col items-center justify-center gap-1 rounded-lg" aria-label="Menu">
           <span className={`block h-[2px] w-5 rounded bg-dark transition-all ${open ? 'translate-y-[6px] rotate-45' : ''}`} />

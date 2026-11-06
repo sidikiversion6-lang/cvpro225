@@ -1,3 +1,5 @@
+const WHATSAPP = process.env.NEXT_PUBLIC_WHATSAPP || '+225 07 99 07 62 41'
+
 export default function PaymentModalities() {
   return (
     <section>
@@ -7,19 +9,19 @@ export default function PaymentModalities() {
 
       <div className="mx-auto grid max-w-4xl gap-8 md:grid-cols-2">
         <div>
-          <h4 className="mb-3 font-semibold text-dark">Modes acceptés</h4>
+          <h4 className="mb-3 font-semibold text-dark">Paiement en ligne sécurisé</h4>
           <ul className="space-y-2 text-text-gray">
             <li className="flex items-center gap-3">
-              <span className="text-2xl">📱</span>
-              <span><strong>Orange Money</strong> — <span className="whitespace-nowrap">+225 07 99 07 62 41</span></span>
+              <span className="text-2xl" aria-hidden="true">📱</span>
+              <span><strong>Orange Money</strong> et <strong>MTN MoMo</strong></span>
             </li>
             <li className="flex items-center gap-3">
-              <span className="text-2xl">📱</span>
-              <span><strong>MTN Mobile Money</strong> — <span className="whitespace-nowrap">+225 07 99 07 62 41</span></span>
+              <span className="text-2xl" aria-hidden="true">💳</span>
+              <span><strong>Carte bancaire</strong> (Visa, Mastercard)</span>
             </li>
             <li className="flex items-center gap-3">
-              <span className="text-2xl">💵</span>
-              <span><strong>Cash</strong> — Paiement à Abidjan</span>
+              <span className="text-2xl" aria-hidden="true">🔒</span>
+              <span>Via <strong>PayDunya</strong>, plateforme de paiement agréée</span>
             </li>
           </ul>
         </div>
@@ -28,12 +30,12 @@ export default function PaymentModalities() {
           <h4 className="mb-3 font-semibold text-dark">Conditions</h4>
           <ul className="space-y-3 text-text-gray">
             <li className="flex items-start gap-3">
-              <span className="flex-shrink-0 font-bold text-primary">50%</span>
-              <span>à la commande pour démarrer le travail</span>
+              <span className="flex-shrink-0 text-green-600">✓</span>
+              <span>Paiement à la commande, au prix affiché</span>
             </li>
             <li className="flex items-start gap-3">
-              <span className="flex-shrink-0 font-bold text-primary">50%</span>
-              <span>à la livraison du service finalisé</span>
+              <span className="flex-shrink-0 text-green-600">✓</span>
+              <span>Reçu envoyé par email dès la confirmation du paiement</span>
             </li>
             <li className="flex items-start gap-3">
               <span className="flex-shrink-0 text-green-600">✓</span>
@@ -47,7 +49,7 @@ export default function PaymentModalities() {
         <p className="text-sm text-text-gray">
           Une question ?{' '}
           <a
-            href="https://wa.me/2250799076241"
+            href={`https://wa.me/${WHATSAPP.replace(/[^0-9]/g, '')}`}
             className="font-medium text-primary hover:underline"
           >
             Contactez-nous sur WhatsApp →

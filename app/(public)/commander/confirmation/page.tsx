@@ -9,7 +9,7 @@ const WHATSAPP = process.env.NEXT_PUBLIC_WHATSAPP || '+225 07 99 07 62 41'
 
 function ConfirmationContent() {
   const params = useSearchParams()
-  const ref = params.get('ref') || 'GP-XXXXXXXX'
+  const ref = params.get('ref') || 'CVP-XXXXXXXX'
   const service = params.get('service') || ''
   const pack = params.get('pack') || ''
 

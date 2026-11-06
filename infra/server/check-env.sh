@@ -83,6 +83,20 @@ else
   (( pd_set < 3 )) && echo "  PayDunya partiellement configuré : renseignez les 3 clés ou videz-les toutes."
 fi
 
+echo "== .env (app) — offre de lancement"
+lod="$(val LAUNCH_OFFER_END_DATE "$E")"; lod="${lod%\"}"; lod="${lod#\"}"
+if [[ -z "$lod" ]]; then
+  printf '  %-34s %s\n' LAUNCH_OFFER_END_DATE "vide — prix NORMAUX appliqués (pas d'offre de lancement)"
+elif [[ "$lod" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] && date -d "$lod" +%F >/dev/null 2>&1 && [[ "$(date -d "$lod" +%F)" == "$lod" ]]; then
+  if [[ "$(date -u +%F)" > "$lod" ]]; then
+    printf '  %-34s %s\n' LAUNCH_OFFER_END_DATE "ok — offre TERMINÉE le $lod, prix normaux"
+  else
+    printf '  %-34s %s\n' LAUNCH_OFFER_END_DATE "ok — offre de lancement active jusqu'au $lod inclus"
+  fi
+else
+  printf '  %-34s %s\n' LAUNCH_OFFER_END_DATE "FORMAT ? (AAAA-MM-JJ, date réelle)"; fail=1
+fi
+
 echo "== .env (app) — optionnelles"
 for v in ADMIN_BCC_EMAIL NEXT_PUBLIC_STRAPI_URL STRAPI_URL STRAPI_API_TOKEN GOOGLE_VERIFICATION CV_RATE_LIMIT_WHITELIST SEED_ADMIN_PASSWORD; do
   optional $E "$v"

@@ -31,7 +31,7 @@ describe('PayDunya optionnel (clés vides)', () => {
   test("createPaydunyaInvoice refuse sans appeler l'API", async () => {
     const { createPaydunyaInvoice, buildPaydunyaParams, PaydunyaNotConfiguredError } = await import('../lib/paydunya')
     const params = buildPaydunyaParams({
-      ref: 'CVP-T', service: 'CV', pack: 'Pro', montant: 1000,
+      ref: 'CVP-T', pack: 'cv-pro-ats', montant: 1000,
       nom: 'N', prenom: 'P', email: 'a@b.co', telephone: '0700000000',
     })
     await assert.rejects(createPaydunyaInvoice(params), PaydunyaNotConfiguredError)

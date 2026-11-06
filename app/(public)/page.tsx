@@ -6,6 +6,7 @@ import SplitCTA from '@/components/home/SplitCTA'
 import StatsBar from '@/components/home/StatsBar'
 import Testimonials from '@/components/home/Testimonials'
 import WhatsAppCTA from '@/components/home/WhatsAppCTA'
+import { SITE_CONFIG } from '@/lib/site-config'
 
 export const metadata = PAGE_METADATA.home
 
@@ -21,7 +22,8 @@ export default function HomePage() {
       <ServicesIcons />
       <SplitCTA />
       <StatsBar />
-      <Testimonials />
+      {/* Témoignages + « Des centaines d'Ivoiriens… » : masqués tant que nous n'avons pas de vrais avis (lib/site-config.ts) */}
+      {SITE_CONFIG.showTestimonials && <Testimonials />}
       <WhatsAppCTA />
     </>
   )

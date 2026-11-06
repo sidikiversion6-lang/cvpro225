@@ -1,68 +1,35 @@
-'use client'
-
-import Link from 'next/link'
-import PricingCard from '@/components/ui/PricingCard'
-import type { PricingFeature } from '@/components/ui/PricingCard'
 import AccordionFAQ from '@/components/ui/AccordionFAQ'
+import OffresGrid from '@/components/offres/OffresGrid'
+import { EXPRESS, formatFcfa } from '@/lib/offres'
+
+// Prix lus à chaque requête : la fin de l'offre de lancement s'applique sans redéploiement.
+export const dynamic = 'force-dynamic'
 
 const WHATSAPP = process.env.NEXT_PUBLIC_WHATSAPP || '+225 07 99 07 62 41'
 
-/* ── Données ── */
-
-const CV_PACKS = [
-  {
-    label: 'CV Pro ATS', price: '15 000', delay: '48h', featured: true,
-    badge: 'Formule unique',
-    ctaHref: '/commander?service=cv&pack=standard',
-    features: [
-      { text: 'CV professionnel PDF + DOCX', included: true },
-      { text: 'Optimisation ATS avancée + rapport', included: true },
-      { text: 'Mots-clés adaptés à votre secteur', included: true },
-      { text: 'Retouches incluses', included: true },
-    ] as PricingFeature[],
-  },
-]
-
-const JOB_PACKS = [
-  {
-    label: 'JobAssist', price: '30 000', delay: '72h', featured: true,
-    badge: 'Formule unique',
-    ctaHref: '/commander?service=job&pack=pack-3',
-    features: [
-      { text: 'Tout le CV Pro ATS, plus :', included: true },
-      { text: 'Lettre de motivation personnalisée', included: true },
-      { text: 'Optimisation du profil LinkedIn', included: true },
-      { text: 'Coaching candidature', included: true },
-    ] as PricingFeature[],
-  },
-]
-
-
 const FAQ_ITEMS = [
-  { question: 'Comment se passe le paiement ?', answer: 'Le paiement s\'effectue à la commande via Orange Money, MTN MoMo, virement bancaire ou PayDunya.' },
-  { question: 'Puis-je commander plusieurs services en même temps ?', answer: 'Oui, et nous proposons une réduction de 10% sur le deuxième service commandé simultanément. Contactez-nous sur WhatsApp pour obtenir votre devis combiné.' },
-  { question: 'Y a-t-il des frais cachés ?', answer: 'Non. Le prix affiché est le prix final. Les retouches incluses dans votre pack sont comprises dans ce tarif. Seules les options supplémentaires (ex : traduction, urgence) font l\'objet d\'un devis séparé.' },
-  { question: 'Proposez-vous des tarifs réduits pour les étudiants ?', answer: 'Oui. Sur présentation d\'une carte d\'étudiant valide, nous accordons une réduction de 15% sur le CV Pro ATS.' },
+  { question: 'Comment se passe le paiement ?', answer: 'Le paiement s\'effectue en ligne à la fin de votre commande, via PayDunya : Orange Money, MTN MoMo ou carte bancaire. Vous recevez un reçu par email dès la confirmation.' },
+  { question: 'Qu\'est-ce que l\'option Express ?', answer: `L'${EXPRESS.nom} garantit une livraison en ${EXPRESS.delai}. Elle s'ajoute à n'importe quelle offre pour ${formatFcfa(EXPRESS.prix)}, à cocher au moment de la commande.` },
+  { question: 'Y a-t-il des frais cachés ?', answer: 'Non. Le prix affiché est le prix final. Les retouches incluses dans votre pack sont comprises dans ce tarif. Seule l\'option Express (livraison 24h) est en supplément, au prix affiché ; une traduction fait l\'objet d\'un devis séparé.' },
   { question: 'Puis-je obtenir une facture pour mon entreprise ?', answer: 'Absolument. Une facture officielle est émise pour toute commande. Précisez lors de votre commande les informations de facturation de votre entreprise.' },
 ]
 
 const GUARANTEES = [
-  { icon: '✅', title: 'Livraison garantie', text: 'Nous respectons les délais annoncés ou nous vous remboursons intégralement.' },
-  { icon: '🔄', title: 'Retouches incluses', text: 'Chaque pack inclut des retouches. Vous êtes satisfait ou on recommence.' },
+  { icon: '✅', title: 'Délais annoncés', text: 'Livraison en 48h ou 72h selon l\'offre, 24h avec l\'option Express.' },
+  { icon: '🔄', title: 'Satisfait ou refait', text: 'Nous retravaillons votre CV gratuitement jusqu\'à votre satisfaction.' },
   { icon: '🔒', title: 'Données sécurisées', text: 'Vos documents sont chiffrés et supprimés sous 90 jours après livraison.' },
 ]
 
 const PAYMENTS = [
   { icon: 'OM', bg: '#0F7B5A', label: 'Orange Money', sub: 'Côte d\'Ivoire' },
   { icon: 'MTN', bg: '#FFCC00', label: 'MTN MoMo', sub: 'Mobile Money', textColor: '#0F172A' },
-  { icon: '🏦', bg: '#E5E7EB', label: 'Virement bancaire', sub: 'Banques locales', emoji: true },
-  { icon: 'PD', bg: '#2563EB', label: 'PayDunya', sub: 'Carte & Mobile' },
+  { icon: '💳', bg: '#E5E7EB', label: 'Carte bancaire', sub: 'Visa, Mastercard', emoji: true },
+  { icon: 'PD', bg: '#2563EB', label: 'PayDunya', sub: 'Paiement sécurisé' },
 ]
 
 /* ── Composant page ── */
 
 export default function TarifsPage() {
-
   return (
     <>
       {/* SECTION 1 — Hero */}
@@ -78,36 +45,15 @@ export default function TarifsPage() {
             Tous nos services sont disponibles à la commande. Payez uniquement ce dont vous avez besoin, quand vous en avez besoin.
           </p>
           <p className="mt-3 text-sm text-white/40">
-            Prix en Francs CFA (FCFA) · Paiement via Orange Money, MTN MoMo ou virement
+            Prix en Francs CFA (FCFA) · Paiement en ligne : Orange Money, MTN MoMo, carte bancaire
           </p>
         </div>
       </section>
 
-      {/* SECTION 3 — Packs */}
+      {/* SECTION 3 — Offres (source : lib/offres.ts) */}
       <section className="bg-[#FAFAF9] pb-16 pt-10">
         <div className="gp-container">
-          <div className="mx-auto grid max-w-3xl items-stretch gap-8 sm:grid-cols-2">
-            {/* CV Pro ATS */}
-            <div className="flex flex-col">
-              <div className="mb-6 text-center">
-                <h2 className="font-heading text-2xl font-extrabold text-dark">📄 CV Pro ATS</h2>
-                <p className="mt-2 text-sm text-gray-500">Votre CV professionnel livré en 48h</p>
-              </div>
-              <div className="flex flex-1">
-                <PricingCard {...CV_PACKS[0]} accentColor="#0F7B5A" />
-              </div>
-            </div>
-            {/* JobAssist */}
-            <div className="flex flex-col">
-              <div className="mb-6 text-center">
-                <h2 className="font-heading text-2xl font-extrabold text-dark">💼 JobAssist</h2>
-                <p className="mt-2 text-sm text-gray-500">Votre assistant candidature personnel</p>
-              </div>
-              <div className="flex flex-1">
-                <PricingCard {...JOB_PACKS[0]} accentColor="#D97706" />
-              </div>
-            </div>
-          </div>
+          <OffresGrid />
         </div>
       </section>
 

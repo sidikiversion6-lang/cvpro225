@@ -73,7 +73,7 @@ export default function InscriptionPage() {
       <div className="flex flex-1 items-center justify-center p-6 lg:p-12">
         <div className="w-full max-w-md">
           <Link href="/" className="mb-8 block text-center text-2xl font-extrabold lg:hidden">
-            <span className="text-dark">Pro</span><span className="text-primary">224</span>
+            <span className="text-dark">CVPro</span><span className="text-primary">225</span>
           </Link>
 
           <h1 className="font-heading text-2xl font-black text-dark">Créer un compte</h1>

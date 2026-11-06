@@ -1,13 +1,19 @@
 import { prisma } from '@/lib/prisma'
+import { ligneCommande, lienCollecteInfos } from '@/lib/commande-detail'
 import Link from 'next/link'
 import StatusBadge from '@/components/dashboard/StatusBadge'
-import { LABELS_SERVICE, LABELS_PACK } from '@/types/commande'
 import { formatPrix } from '@/lib/commande-config'
 
-export default async function AdminCommandesPage({ searchParams }: { searchParams: { statut?: string; service?: string } }) {
+export default async function AdminCommandesPage({ searchParams }: { searchParams: { statut?: string; service?: string; filtre?: string } }) {
+  const aContacter = searchParams.filtre === 'a-contacter'
   const where: Record<string, unknown> = {}
   if (searchParams.statut) where.statut = searchParams.statut
   if (searchParams.service) where.service = searchParams.service
+  // « À contacter » : commandes PAYÉES dont le client n'a pas fourni de CV
+  if (aContacter) {
+    where.a_un_cv = false
+    where.paid_at = { not: null }
+  }
 
   const commandes = await prisma.commande.findMany({
     where,
@@ -27,8 +33,11 @@ export default async function AdminCommandesPage({ searchParams }: { searchParam
       </div>
 
       <div className="mb-6 flex flex-wrap gap-2">
-        <Link href="/admin/commandes" className={`rounded-full px-4 py-1.5 text-xs font-semibold ${!searchParams.statut ? 'bg-primary text-white' : 'bg-white text-gray-600 border'}`}>
+        <Link href="/admin/commandes" className={`rounded-full px-4 py-1.5 text-xs font-semibold ${!searchParams.statut && !aContacter ? 'bg-primary text-white' : 'bg-white text-gray-600 border'}`}>
           Toutes
+        </Link>
+        <Link href="/admin/commandes?filtre=a-contacter" className={`rounded-full px-4 py-1.5 text-xs font-semibold ${aContacter ? 'bg-rouge text-white' : 'border border-rouge/40 bg-white text-rouge'}`}>
+          ⚠️ À contacter (payées sans CV)
         </Link>
         {statuts.map((s) => (
           <Link key={s} href={`/admin/commandes?statut=${s}`} className={`rounded-full px-4 py-1.5 text-xs font-semibold ${searchParams.statut === s ? 'bg-primary text-white' : 'bg-white text-gray-600 border'}`}>
@@ -43,7 +52,8 @@ export default async function AdminCommandesPage({ searchParams }: { searchParam
             <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
               <th className="px-4 py-3">Réf</th>
               <th className="px-4 py-3">Client</th>
-              <th className="px-4 py-3">Email</th>
+              <th className="px-4 py-3">Contact</th>
+              <th className="px-4 py-3">CV</th>
               <th className="px-4 py-3">Service / Pack</th>
               <th className="px-4 py-3">Montant</th>
               <th className="px-4 py-3">Statut</th>
@@ -55,10 +65,26 @@ export default async function AdminCommandesPage({ searchParams }: { searchParam
             {commandes.map((c) => (
               <tr key={c.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
                 <td className="px-4 py-3 font-mono text-xs text-gray-500">{c.ref}</td>
-                <td className="px-4 py-3 font-medium text-dark">{c.prenom} {c.nom}</td>
-                <td className="px-4 py-3 text-gray-500">{c.email}</td>
+                <td className="px-4 py-3 font-medium text-dark">{[c.prenom, c.nom].filter(Boolean).join(' ')}</td>
+                <td className="px-4 py-3 text-gray-500">
+                  <a href={`https://wa.me/${c.telephone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="block text-xs font-medium text-vert hover:underline">+{c.telephone}</a>
+                  <span className="text-xs">{c.email || <em className="text-gray-400">pas d’email</em>}</span>
+                </td>
+                <td className="px-4 py-3">
+                  {c.a_un_cv === false ? (
+                    <a href={lienCollecteInfos(c)} target="_blank" rel="noopener noreferrer" className="inline-block whitespace-nowrap rounded-full bg-rouge/10 px-2.5 py-1 text-xs font-bold text-rouge hover:bg-rouge/20">
+                      ⚠️ Pas de CV — à contacter sur WhatsApp
+                    </a>
+                  ) : c.cv_fichier ? (
+                    <a href={`/api/admin/commandes/cv?id=${c.id}`} className="text-xs font-medium text-primary hover:underline">📄 Télécharger</a>
+                  ) : c.a_un_cv ? (
+                    <span className="text-xs text-gray-400">fourni (email admin)</span>
+                  ) : (
+                    <span className="text-xs text-gray-300">—</span>
+                  )}
+                </td>
                 <td className="px-4 py-3 text-gray-600">
-                  {LABELS_SERVICE[c.service as keyof typeof LABELS_SERVICE]} — {LABELS_PACK[c.pack] || c.pack}
+                  {ligneCommande(c).libelle}
                 </td>
                 <td className="px-4 py-3 font-medium text-dark">{formatPrix(c.montant)}</td>
                 <td className="px-4 py-3"><StatusBadge statut={c.statut} /></td>

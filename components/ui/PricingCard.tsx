@@ -18,6 +18,12 @@ interface Props {
   ctaHref: string
   badge?: string
   savingsBadge?: string
+  /** Prix normal barré (offre de lancement en cours). */
+  oldPrice?: string
+  /** Libellé du badge de lancement, ex. « Offre de lancement ». */
+  launchBadge?: string
+  /** Mention sous le prix (ex. option Express, fin de l'offre). */
+  priceNote?: string
 }
 
 export default function PricingCard({
@@ -33,19 +39,22 @@ export default function PricingCard({
   ctaHref,
   badge,
   savingsBadge,
+  oldPrice,
+  launchBadge,
+  priceNote,
 }: Props) {
   return (
     <div
       className={`relative flex h-full w-full flex-col rounded-2xl bg-white p-6 transition-all duration-300 hover:-translate-y-1 ${
         featured
-          ? 'z-10 scale-105 shadow-xl ring-2'
+          ? 'z-10 border-2 shadow-2xl ring-4 sm:scale-105'
           : 'border border-gray-200 shadow-sm hover:shadow-lg'
       }`}
-      style={featured ? { borderColor: accentColor, boxShadow: `0 8px 30px ${accentColor}20` } : undefined}
+      style={featured ? { borderColor: accentColor, boxShadow: `0 12px 40px ${accentColor}35`, ['--tw-ring-color' as string]: `${accentColor}25`, backgroundImage: `linear-gradient(180deg, ${accentColor}0D 0%, #ffffff 35%)` } : undefined}
     >
       {badge && (
         <div
-          className="absolute -top-3.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full px-4 py-1 text-xs font-bold text-white"
+          className={`absolute -top-3.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full font-bold text-white shadow ${featured ? 'px-5 py-1.5 text-sm' : 'px-4 py-1 text-xs'}`}
           style={{ backgroundColor: accentColor }}
         >
           {badge}
@@ -73,12 +82,26 @@ export default function PricingCard({
         </span>
       )}
 
-      <div className="mt-2 flex items-baseline gap-1.5">
-        <span className="font-heading text-3xl font-extrabold" style={{ color: accentColor }}>
+      {launchBadge && (
+        <span className="mt-2 inline-flex w-fit items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[0.6875rem] font-bold uppercase tracking-wide text-amber-800">
+          🎉 {launchBadge}
+        </span>
+      )}
+
+      {oldPrice && (
+        <p className="mt-2 text-sm text-gray-400">
+          <span className="sr-only">Prix normal : </span>
+          <s>{oldPrice} {currency}</s>
+        </p>
+      )}
+      <div className={`${oldPrice ? 'mt-0' : 'mt-2'} flex items-baseline gap-1.5`}>
+        {oldPrice && <span className="sr-only">Prix de lancement : </span>}
+        <span className={`font-heading font-extrabold ${featured ? 'text-5xl' : 'text-4xl'}`} style={{ color: accentColor }}>
           {price}
         </span>
         <span className="text-sm font-medium text-gray-400">{currency}</span>
       </div>
+      {priceNote && <p className="mt-1 text-xs text-gray-500">{priceNote}</p>}
 
       <div className="my-5 h-px bg-gray-100" />
 

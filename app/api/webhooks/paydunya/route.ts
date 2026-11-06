@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { checkPaydunyaStatus, isPaydunyaConfigured } from '@/lib/paydunya'
 import { handlePaydunyaIpn, type IpnStatus } from '@/lib/paydunya-ipn'
-import { sendConfirmationEmail, sendAdminNotification } from '@/lib/resend'
+import { sendPaymentReceiptEmail, sendAdminNotification } from '@/lib/resend'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -42,6 +42,8 @@ export async function POST(request: Request) {
         return count === 1
       },
 
+      // Reçu client + notification admin, avec le montant VÉRIFIÉ (= commandes.montant,
+      // égal au montant confirmé par l'API PayDunya, sinon on ne serait pas ici).
       sendPaidEmails: async (id) => {
         const c = await prisma.commande.findUniqueOrThrow({ where: { id } })
         const emailData = {
@@ -55,8 +57,24 @@ export async function POST(request: Request) {
           ville: c.ville || '',
           montant: c.montant,
           message: c.message || '',
+          details: c.details,
+          aUnCv: c.a_un_cv,
         }
-        await Promise.allSettled([sendConfirmationEmail(emailData), sendAdminNotification(emailData)])
+        const tasks: Promise<unknown>[] = [sendAdminNotification(emailData, 'payee')]
+        // Reçu client seulement si un email a été fourni (optionnel).
+        if (c.email) tasks.push(sendPaymentReceiptEmail({ ...emailData, email: c.email }, { paidAt: c.paid_at ?? new Date() }))
+        // Back-office : client payé sans CV -> à contacter sur WhatsApp.
+        if (c.a_un_cv === false) {
+          tasks.push(prisma.notification.create({
+            data: {
+              type: 'a_contacter',
+              titre: `⚠️ Pas de CV — à contacter sur WhatsApp (${c.ref})`,
+              message: `${[c.prenom, c.nom].filter(Boolean).join(' ')} a payé ${c.montant} FCFA sans fournir de CV : recueillir ses informations sur WhatsApp (+${c.telephone}).`,
+              lien: '/admin/commandes?filtre=a-contacter',
+            },
+          }))
+        }
+        await Promise.allSettled(tasks)
       },
 
       log: (msg) => console.log(msg),

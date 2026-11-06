@@ -1,4 +1,5 @@
 import { isIP } from 'node:net';
+import { formatFcfa, prixMin } from '@/lib/offres';
 import { getSupabaseAdmin } from './supabase-client';
 
 /**
@@ -16,7 +17,8 @@ import { getSupabaseAdmin } from './supabase-client';
  */
 
 export const CTA_URL = '/services/cv-pro';
-const CTA_PRICE = '15 000 FCFA';
+// Prix lu à chaque appel (offre de lancement) — source : lib/offres.ts
+const ctaPrice = () => formatFcfa(prixMin());
 const WINDOW_HOURS = 24;
 const WHITELIST_IP_LIMIT = 1_000_000;
 
@@ -110,7 +112,7 @@ export async function reserveAnalysis(
       allowed: false,
       reason: 'global_limit',
       status: 503,
-      message: `L'analyse gratuite a atteint sa capacité du jour. Réessayez demain, ou commandez votre CV Pro ATS à ${CTA_PRICE}.`,
+      message: `L'analyse gratuite a atteint sa capacité du jour. Réessayez demain, ou commandez votre CV Pro ATS à partir de ${ctaPrice()}.`,
       ctaUrl: CTA_URL,
     };
   }
@@ -118,7 +120,7 @@ export async function reserveAnalysis(
     allowed: false,
     reason: 'ip_limit',
     status: 429,
-    message: `Limite gratuite atteinte. Pour des analyses illimitées, commandez votre CV Pro ATS à ${CTA_PRICE}.`,
+    message: `Limite gratuite atteinte. Pour aller plus loin, commandez votre CV Pro ATS à partir de ${ctaPrice()}.`,
     ctaUrl: CTA_URL,
   };
 }

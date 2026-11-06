@@ -9,6 +9,8 @@ const nextConfig = {
   },
   experimental: {
     serverComponentsExternalPackages: ['pdf-parse', 'pdfjs-dist'],
+    // instrumentation.ts : purge quotidienne des CV stockés (lib/cv-purge.ts)
+    instrumentationHook: true,
   },
   async redirects() {
     return [
@@ -20,26 +22,6 @@ const nextConfig = {
       {
         source: '/services/tender-pro/:path*',
         destination: '/tarifs',
-        permanent: true,
-      },
-      {
-        source: '/services/visa-check',
-        destination: 'https://visaguinee.com',
-        permanent: true,
-      },
-      {
-        source: '/services/visa-check/:path*',
-        destination: 'https://visaguinee.com',
-        permanent: true,
-      },
-      {
-        source: '/visa',
-        destination: 'https://visaguinee.com',
-        permanent: true,
-      },
-      {
-        source: '/visa/:path*',
-        destination: 'https://visaguinee.com',
         permanent: true,
       },
     ]

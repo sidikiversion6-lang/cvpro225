@@ -1,9 +1,10 @@
 import { redirect } from 'next/navigation'
+import { ligneCommande } from '@/lib/commande-detail'
 import Link from 'next/link'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import StatusBadge from '@/components/dashboard/StatusBadge'
-import { LABELS_SERVICE, LABELS_PACK } from '@/types/commande'
+import { LABELS_SERVICE } from '@/types/commande'
 import { formatPrix } from '@/lib/commande-config'
 
 const EMOJIS: Record<string, string> = { cv: '📄', visa: '🛂', job: '💼', tender: '📋' }
@@ -87,7 +88,7 @@ export default async function DashboardPage() {
                         <span className="font-medium text-dark">{LABELS_SERVICE[c.service as keyof typeof LABELS_SERVICE]}</span>
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-gray-600">{LABELS_PACK[c.pack] || c.pack}</td>
+                    <td className="px-4 py-3 text-gray-600">{ligneCommande(c).libelle}</td>
                     <td className="px-4 py-3 text-gray-500">{new Date(c.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
                     <td className="px-4 py-3 font-medium text-dark">{formatPrix(c.montant)}</td>
                     <td className="px-4 py-3"><StatusBadge statut={c.statut} /></td>

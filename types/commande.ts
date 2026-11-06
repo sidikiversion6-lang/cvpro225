@@ -1,6 +1,8 @@
+import { OFFRES, EXPRESS, type OffreId } from '@/lib/offres'
+
 export type ServiceType = 'cv' | 'visa' | 'job' | 'tender'
 
-export type PackCV = 'basic' | 'standard' | 'premium' | 'cv-express'
+export type PackCV = OffreId | 'basic' | 'standard' | 'premium' | 'cv-express'
 export type PackVisa = 'analyse' | 'assistance' | 'complet'
 export type PackJob = 'candidature-1' | 'pack-3' | 'mensuel' | 'job-express'
 export type PackTender = 'par-dossier' | 'mensuel-tender' | 'annuel'
@@ -54,22 +56,7 @@ export interface Commande {
   updated_at: Date
 }
 
-export const PRIX_PACKS: Record<string, number> = {
-  basic: 70000,
-  standard: 15000,
-  'cv-express': 20000,
-  premium: 150000,
-  analyse: 100000,
-  assistance: 250000,
-  complet: 450000,
-  'candidature-1': 100000,
-  'pack-3': 30000,
-  'job-express': 35000,
-  mensuel: 500000,
-  'par-dossier': 200000,
-  'mensuel-tender': 500000,
-  annuel: 1000000,
-}
+// Les prix ne sont PLUS définis ici : source unique = lib/offres.ts.
 
 export const LABELS_SERVICE: Record<ServiceType, string> = {
   cv: 'CV Pro ATS',
@@ -78,17 +65,22 @@ export const LABELS_SERVICE: Record<ServiceType, string> = {
   tender: 'TenderPro',
 }
 
+/**
+ * Libellés des packs pour l'affichage (back-office, dashboard, emails).
+ * Offres actuelles (lib/offres.ts) + anciens identifiants, pour les commandes historiques.
+ */
 export const LABELS_PACK: Record<string, string> = {
+  ...Object.fromEntries(OFFRES.map((o) => [o.id, o.nom])),
+  standard: 'CV Pro ATS',
+  'cv-express': `CV Pro ATS + ${EXPRESS.nom}`,
+  'pack-3': 'JobAssist',
+  'job-express': `JobAssist + ${EXPRESS.nom}`,
   basic: 'Basic',
-  standard: 'Standard',
-  'cv-express': 'CV Pro ATS Express',
   premium: 'Premium',
   analyse: 'Analyse',
   assistance: 'Assistance',
   complet: 'Pack Complet',
   'candidature-1': '1 Candidature',
-  'pack-3': 'Pack 3 Candidatures',
-  'job-express': 'JobAssist Express',
   mensuel: 'Pack Mensuel',
   'par-dossier': 'Audit Express',
   'mensuel-tender': 'Montage Standard',

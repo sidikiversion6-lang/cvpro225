@@ -1,4 +1,4 @@
-import { PAGE_METADATA } from '@/lib/seo'
+import { metaCvPro } from '@/lib/seo'
 import Link from 'next/link'
 import { cvPro as data } from '@/content/services'
 import ServiceHero from '@/components/services/ServiceHero'
@@ -7,13 +7,17 @@ import FAQAccordion from '@/components/services/FAQAccordion'
 import ServiceSidebar from '@/components/services/ServiceSidebar'
 import ServiceSteps from '@/components/services/ServiceSteps'
 import ServiceBenefits from '@/components/services/ServiceBenefits'
-import PricingCard from '@/components/ui/PricingCard'
-import type { PricingFeature } from '@/components/ui/PricingCard'
+import OffresGrid from '@/components/offres/OffresGrid'
+import { SITE_CONFIG } from '@/lib/site-config'
 import PaymentModalities from '@/components/services/PaymentModalities'
 
 const C = data.couleur
 
-export const metadata = PAGE_METADATA.cvPro
+// Prix lus à chaque requête : la fin de l'offre de lancement s'applique sans redéploiement.
+export const dynamic = 'force-dynamic'
+export function generateMetadata() {
+  return metaCvPro()
+}
 
 const STEPS = [
   {
@@ -23,7 +27,7 @@ const STEPS = [
       </svg>
     ),
     titre: 'Vous commandez',
-    description: 'Choisissez votre pack et remplissez le formulaire en ligne ou contactez-nous sur WhatsApp. Pas besoin de CV existant.',
+    description: 'Choisissez votre offre et remplissez le formulaire en ligne ou contactez-nous sur WhatsApp. Pas besoin de CV existant.',
   },
   {
     icon: (
@@ -41,7 +45,7 @@ const STEPS = [
       </svg>
     ),
     titre: 'Vous validez',
-    description: 'Vous recevez votre CV par email. Si quelque chose ne vous convient pas, on ajuste selon votre pack.',
+    description: 'Vous recevez votre CV par email. Si quelque chose ne vous convient pas, on ajuste : les retouches sont incluses.',
   },
   {
     icon: (
@@ -128,41 +132,12 @@ export default function CvProPage() {
       <section id="packs" className="scroll-mt-20 bg-gray-50 py-14 lg:py-20">
         <div className="gp-container">
           <h2 className="mb-4 text-center font-heading text-2xl font-extrabold text-dark sm:text-3xl">
-            Choisissez votre <span style={{ color: C }}>pack</span>
+            Choisissez votre <span style={{ color: C }}>offre</span>
           </h2>
           <p className="mb-10 text-center text-base text-gray-500">
-            Tous les packs incluent un CV professionnel livré en PDF et DOCX.
+            Toutes les offres incluent un CV professionnel livré en PDF et DOCX.
           </p>
-          <div className="mx-auto grid max-w-4xl items-stretch gap-8 sm:grid-cols-2">
-            <PricingCard
-              label="CV Pro ATS"
-              subtitle="Formule standard"
-              price="15 000"
-              delay="48h"
-              accentColor={C}
-              ctaHref="/commander?service=cv&pack=standard"
-              features={[
-                { text: 'CV professionnel PDF + DOCX', included: true },
-                { text: 'Optimisation ATS avancée + rapport', included: true },
-                { text: 'Mots-clés adaptés à votre secteur', included: true },
-                { text: 'Retouches incluses', included: true },
-              ] as PricingFeature[]}
-            />
-            <PricingCard
-              label="CV Pro ATS Express"
-              subtitle="Livraison express"
-              price="20 000"
-              delay="24h"
-              featured
-              badge="Rapide"
-              accentColor={C}
-              ctaHref="/commander?service=cv&pack=cv-express"
-              features={[
-                { text: 'Tout le pack standard', included: true },
-                { text: 'Livraison prioritaire en 24h', included: true },
-              ] as PricingFeature[]}
-            />
-          </div>
+          <OffresGrid ids={['cv-pro-ats', 'cv-pro-ats-lettre']} />
 
           <div className="mt-12">
             <PaymentModalities />
@@ -170,7 +145,8 @@ export default function CvProPage() {
         </div>
       </section>
 
-      {/* Témoignages */}
+      {/* Témoignages — masqués tant que nous n'avons pas de vrais avis (lib/site-config.ts) */}
+      {SITE_CONFIG.showTestimonials && (
       <section className="bg-white py-14 lg:py-20">
         <div className="gp-container">
           <h2 className="mb-10 text-center font-heading text-2xl font-extrabold text-dark sm:text-3xl">
@@ -179,6 +155,7 @@ export default function CvProPage() {
           <ServiceTestimonials items={data.temoignages} accentColor={C} />
         </div>
       </section>
+      )}
 
       {/* Pourquoi nous + FAQ sur deux colonnes */}
       <section className="bg-gray-50 py-14 lg:py-20">

@@ -15,7 +15,7 @@ export default function ContactPage() {
       <PageHero
         tag="Contactez-nous"
         title="On est là pour vous aider"
-        subtitle="Réponse garantie sous 30 minutes en heures ouvrables (8h–20h, 7j/7)"
+        subtitle="Réponse en 2h sur WhatsApp, en heures ouvrables"
       />
 
       {/* SECTION 2 — Canaux de contact */}
@@ -171,7 +171,7 @@ export default function ContactPage() {
             <div>
               <h3 className="font-heading text-lg font-bold text-white">Besoin d&apos;une réponse immédiate ?</h3>
               <p className="mt-1 text-sm text-white/80">
-                Écrivez-nous maintenant sur WhatsApp. Une vraie personne vous répond en moins de 30 minutes.
+                Écrivez-nous maintenant sur WhatsApp. Une vraie personne vous répond en moins de 2 heures.
               </p>
             </div>
           </div>

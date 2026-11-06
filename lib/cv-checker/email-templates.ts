@@ -1,3 +1,4 @@
+import { formatFcfa, getOffre, prixOffre } from '@/lib/offres';
 export function buildClientReportEmail(data: {
   email: string;
   score: number;
@@ -34,8 +35,8 @@ export function buildClientReportEmail(data: {
 
   const urgencyMessage =
     data.score >= 85 ? "" :
-    data.score >= 70 ? "Sur le marché actuel, ces lacunes peuvent vous coûter jusqu'à 50% des opportunités." :
-    "Sur le marché actuel, jusqu'à 80% des CV similaires sont éliminés avant même d'être lus par un humain.";
+    data.score >= 70 ? "Ces lacunes peuvent vous faire passer à côté d'opportunités : chaque point compte face aux filtres ATS." :
+    "Les recruteurs utilisent des logiciels ATS pour trier les candidatures. Un CV mal formaté ou sans les bons mots-clés risque d'être écarté avant même d'être lu.";
 
   return `
 <!DOCTYPE html>
@@ -165,7 +166,7 @@ export function buildClientReportEmail(data: {
       <div class="benefits">
         <div class="benefit">
           <span class="benefit-icon">✓</span>
-          <span class="benefit-text">CV 100% optimisé pour les filtres ATS internationaux</span>
+          <span class="benefit-text">CV optimisé ATS pour les recruteurs internationaux</span>
         </div>
         <div class="benefit">
           <span class="benefit-icon">✓</span>
@@ -229,7 +230,7 @@ PRÊT À DÉBLOQUER VOTRE CV ?
 Notre service "CV Pro ATS" inclut :
 ✓ Réécriture complète par un expert RH
 ✓ Mots-clés ATS spécifiques à votre secteur
-✓ CV 100% optimisé pour les filtres internationaux
+✓ CV optimisé ATS
 ✓ Garantie satisfait ou refait
 
 Découvrir CV Pro ATS :
@@ -424,9 +425,9 @@ export function buildAdminFullReport(data: {
         <h3 style="margin-top: 0; color: #92400E;">🎯 Action recommandée</h3>
         <p style="margin-bottom: 12px; color: #78350F;">
           ${data.score < 50
-            ? `Envoyer un message WhatsApp à ${data.firstName} dans l'heure. Score critique = besoin urgent. Proposer le CV Pro ATS (15 000 FCFA, 48h).`
+            ? `Envoyer un message WhatsApp à ${data.firstName} dans l'heure. Score critique = besoin urgent. Proposer le CV Pro ATS (${formatFcfa(prixOffre(getOffre('cv-pro-ats')!))}, 48h).`
             : data.score < 70
-            ? `Contacter ${data.firstName} dans les 24h. Score moyen = optimisations à faire. Proposer le CV Pro ATS (15 000 FCFA, 48h).`
+            ? `Contacter ${data.firstName} dans les 24h. Score moyen = optimisations à faire. Proposer le CV Pro ATS (${formatFcfa(prixOffre(getOffre('cv-pro-ats')!))}, 48h).`
             : `Lead moins prioritaire. Suivi par newsletter ou retargeting. CV déjà bon, conversion plus difficile.`}
         </p>
         <a href="${whatsappLink}" class="whatsapp-cta" style="margin: 0;">💬 Démarrer la conversation WhatsApp</a>

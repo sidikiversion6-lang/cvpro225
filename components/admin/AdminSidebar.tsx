@@ -34,7 +34,7 @@ const NAV_GROUPS = [
   {
     label: 'Services & Tarifs',
     items: [
-      { href: '/admin/services/prix', label: 'Prix des packs', icon: '💰' },
+      { href: '/admin/services/prix', label: 'Grille tarifaire', icon: '💰' },
       { href: '/admin/config', label: 'Configuration site', icon: '⚙️' },
     ],
   },
@@ -50,7 +50,7 @@ export default function AdminSidebar({ user, unreadMessages = 0, unreadNotifs = 
       <div className="border-b border-white/10 p-5">
         <div className="flex items-center gap-2">
           <Link href="/admin" className="text-lg font-extrabold">
-            <span className="text-white">Pro</span><span className="text-primary">224</span>
+            <span className="text-white">CVPro</span><span className="text-primary">225</span>
           </Link>
           <span className="rounded bg-rouge px-1.5 py-0.5 text-[0.6rem] font-bold text-white">Admin</span>
         </div>

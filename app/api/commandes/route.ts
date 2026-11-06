@@ -2,179 +2,84 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
-import { generateRef } from '@/lib/commande-config'
-import { PRIX_PACKS, LABELS_SERVICE, LABELS_PACK } from '@/types/commande'
-import { sendConfirmationEmail, sendAdminNotification, sendEmailVirement } from '@/lib/resend'
+import { OFFRES } from '@/lib/offres'
+import { PAYMENT_UNAVAILABLE_MESSAGE } from '@/lib/paydunya'
 import {
-  createPaydunyaInvoice,
-  buildPaydunyaParams,
-  isPaydunyaConfigured,
-  paymentUnavailableBody,
-} from '@/lib/paydunya'
+  creerCommande,
+  defaultDeps,
+  validerClient,
+  CommandeInvalide,
+} from '@/lib/commandes'
 
-const ONLINE_PAYMENT_MODES = ['orange_money', 'mtn_momo', 'paydunya']
-
+/**
+ * API JSON de création de commande (même logique que /api/order).
+ * Seules les offres de lib/offres.ts sont acceptées ; le montant est calculé
+ * côté serveur. Un champ "montant" éventuel est ignoré (non lu par le schéma).
+ */
 const schema = z.object({
-  service: z.enum(['cv', 'visa', 'job', 'tender']),
-  pack: z.string().min(1),
-  nom: z.string().min(2),
-  prenom: z.string().min(2),
-  email: z.string().email(),
-  telephone: z.string().min(8),
-  ville: z.string().optional().default(''),
-  message: z.string().optional().default(''),
-  mode_paiement: z.string().optional(),
-  details: z.record(z.string()).optional(),
+  offre: z.enum(OFFRES.map((o) => o.id) as [string, ...string[]]),
+  express: z.boolean().optional().default(false),
+  nom_complet: z.string().trim().min(2).max(100),
+  telephone: z.string().trim().min(8).max(30),
+  email: z.string().trim().toLowerCase().email().max(200).optional().nullable(),
+  a_un_cv: z.boolean().optional().default(false),
+  ville: z.string().trim().max(100).optional().default(''),
+  message: z.string().trim().max(2000).optional().default(''),
 })
 
 export async function POST(request: Request) {
+  let body: unknown
   try {
-    const body = await request.json()
-    const parsed = schema.safeParse(body)
-
-    if (!parsed.success) {
-      return NextResponse.json(
-        { success: false, error: 'Données invalides', details: parsed.error.flatten().fieldErrors },
-        { status: 400 }
-      )
-    }
-
-    const data = parsed.data
-
-    // Paiement en ligne demandé mais PayDunya pas configuré : on refuse proprement
-    // AVANT de créer la commande (pas de commande "pending" orpheline).
-    if (ONLINE_PAYMENT_MODES.includes(data.mode_paiement || '') && !isPaydunyaConfigured()) {
-      return NextResponse.json(paymentUnavailableBody(), { status: 503 })
-    }
-
-    const session = await auth()
-    const ref = generateRef()
-    const montant = PRIX_PACKS[data.pack] || 0
-
-    const commande = await prisma.commande.create({
-      data: {
-        ref,
-        service: data.service,
-        pack: data.pack,
-        nom: data.nom,
-        prenom: data.prenom,
-        email: data.email,
-        telephone: data.telephone,
-        ville: data.ville,
-        statut: 'pending',
-        mode_paiement: data.mode_paiement,
-        montant,
-        details: data.details || {},
-        message: data.message,
-        userId: (session?.user?.id as string) || null,
-      },
-    })
-
-    const emailData = {
-      ref: commande.ref,
-      service: data.service,
-      pack: data.pack,
-      prenom: data.prenom,
-      nom: data.nom,
-      email: data.email,
-      telephone: data.telephone,
-      ville: data.ville,
-      montant,
-      message: data.message,
-    }
-
-    // Paiement via PayDunya (Orange Money, MTN MoMo, PayDunya)
-    if (ONLINE_PAYMENT_MODES.includes(data.mode_paiement || '')) {
-      try {
-        const serviceLabel = LABELS_SERVICE[data.service as keyof typeof LABELS_SERVICE] || data.service
-        const packLabel = LABELS_PACK[data.pack] || data.pack
-
-        const paydunyaParams = buildPaydunyaParams({
-          ref: commande.ref,
-          service: serviceLabel,
-          pack: packLabel,
-          montant,
-          nom: data.nom,
-          prenom: data.prenom,
-          email: data.email,
-          telephone: data.telephone,
-        })
-
-        const invoice = await createPaydunyaInvoice(paydunyaParams)
-
-        await prisma.commande.update({
-          where: { ref: commande.ref },
-          data: {
-            paydunya_token: invoice.invoice_token,
-            paydunya_status: 'pending',
-          },
-        })
-
-        return NextResponse.json(
-          { success: true, ref: commande.ref, montant, checkout_url: invoice.checkout_url, requires_payment: true },
-          { status: 201 }
-        )
-      } catch (error) {
-        console.error('[PayDunya] Erreur:', error)
-        // Commande créée mais paiement échoué — on continue sans redirection
-        Promise.allSettled([
-          sendConfirmationEmail(emailData),
-          sendAdminNotification(emailData),
-        ]).catch(() => {})
-
-        return NextResponse.json(
-          { success: true, ref: commande.ref, montant, requires_payment: false, payment_error: true },
-          { status: 201 }
-        )
-      }
-    }
-
-    // Virement bancaire
-    if (data.mode_paiement === 'virement') {
-      Promise.allSettled([
-        sendEmailVirement(emailData),
-        sendAdminNotification(emailData),
-      ]).catch(() => {})
-
-      return NextResponse.json(
-        { success: true, ref: commande.ref, montant, requires_payment: false, virement: true },
-        { status: 201 }
-      )
-    }
-
-    // Pas de mode de paiement spécifié — commande simple
-    Promise.allSettled([
-      sendConfirmationEmail(emailData),
-      sendAdminNotification(emailData),
-    ]).catch(() => {})
-
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ success: false, error: 'JSON invalide' }, { status: 400 })
+  }
+  const parsed = schema.safeParse(body)
+  if (!parsed.success) {
     return NextResponse.json(
-      { success: true, ref: commande.ref, montant },
-      { status: 201 }
+      { success: false, error: 'Données invalides', details: parsed.error.flatten().fieldErrors },
+      { status: 400 },
+    )
+  }
+  const data = parsed.data
+  const client = { nomComplet: data.nom_complet, telephone: data.telephone, email: data.email ?? null }
+  const invalid = validerClient(client)
+  if (invalid) return NextResponse.json({ success: false, error: invalid }, { status: 400 })
+
+  try {
+    const session = await auth()
+    const result = await creerCommande(
+      {
+        offre: data.offre, express: data.express, ...client, aUnCv: data.a_un_cv,
+        ville: data.ville, message: data.message, userId: (session?.user?.id as string) || null,
+      },
+      await defaultDeps(),
+    )
+    return NextResponse.json(
+      result.payment === 'paydunya'
+        ? { success: true, ref: result.ref, montant: result.montant, requires_payment: true, checkout_url: result.checkoutUrl }
+        : { success: true, ref: result.ref, montant: result.montant, requires_payment: false, payment: 'whatsapp', message: PAYMENT_UNAVAILABLE_MESSAGE },
+      { status: 201 },
     )
   } catch (error) {
+    if (error instanceof CommandeInvalide) {
+      return NextResponse.json({ success: false, error: error.message }, { status: 400 })
+    }
     console.error('[API /commandes] Erreur:', error)
-    return NextResponse.json(
-      { success: false, error: 'Erreur lors de la création de la commande' },
-      { status: 500 }
-    )
+    return NextResponse.json({ success: false, error: 'Erreur lors de la création de la commande' }, { status: 500 })
   }
 }
 
-export async function GET(request: Request) {
+/** Commandes de l'utilisateur CONNECTÉ uniquement (plus de lecture par email arbitraire). */
+export async function GET() {
+  const session = await auth()
+  const email = session?.user?.email
+  if (!email) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
   try {
-    const { searchParams } = new URL(request.url)
-    const email = searchParams.get('email')
-
-    if (!email) {
-      return NextResponse.json({ error: 'Paramètre email requis' }, { status: 400 })
-    }
-
     const commandes = await prisma.commande.findMany({
-      where: { email },
+      where: { email: email.toLowerCase() },
       orderBy: { created_at: 'desc' },
     })
-
     return NextResponse.json({ data: commandes })
   } catch {
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })

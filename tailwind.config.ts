@@ -43,7 +43,7 @@ const config: Config = {
         // Fond principal + gris texte
         bg: '#FAFAF9',
         'text-gray': '#475569',
-        // Couleurs du drapeau guinéen (conservées pour éléments identitaires)
+        // Couleurs identitaires de la charte (vert, rouge, jaune)
         vert:         '#009460',
         'vert-light': '#00b876',
         'vert-dark':  '#006f48',

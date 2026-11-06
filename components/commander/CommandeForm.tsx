@@ -2,261 +2,143 @@
 
 import { useState, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { resolvePack, type OffreAffichee } from '@/lib/offres';
 
-type Step =
-  | 'service-selection'
-  | 'pack-selection'
-  | 'contact'
-  | 'cv-question'
-  | 'with-cv'
-  | 'without-cv'
-  | 'success';
+/**
+ * Parcours court : 1) offre + Express  2) « Avez-vous déjà un CV ? »
+ * 3) CV (si oui) + nom complet + WhatsApp (+ email optionnel)  4) paiement PayDunya.
+ * Aucun prix n'est envoyé au serveur : il est recalculé côté serveur.
+ */
+type Step = 'offer-selection' | 'cv-question' | 'details' | 'success';
 
-const SECTORS = [
-  { id: 'ong', label: '🌍 ONG / International' },
-  { id: 'banque', label: '🏦 Banque / Finance' },
-  { id: 'telecom', label: '📡 Télécom / IT' },
-  { id: 'mines', label: '⛏️ Mines / Énergie' },
-  { id: 'admin', label: '🏛️ Administration publique' },
-  { id: 'entrepreneuriat', label: '💡 Entrepreneuriat' },
-  { id: 'autre', label: '📋 Autre secteur' },
-];
+const WHATSAPP_NUMBER = (process.env.NEXT_PUBLIC_WHATSAPP || '+225 07 99 07 62 41').replace(/\D/g, '');
+const WHATSAPP_DISPLAY = process.env.NEXT_PUBLIC_WHATSAPP || '+225 07 99 07 62 41';
+const MAX_CV_BYTES = 5 * 1024 * 1024;
 
-interface PackInfo {
-  name: string;
-  price: number;
-  delay: string;
-  description: string;
-  features: string[];
-  recommended?: boolean;
+export interface CommandeFormProps {
+  /** Offres au prix du moment, calculées côté serveur (lib/offres.ts). Affichage seulement. */
+  offres: OffreAffichee[];
+  express: { nom: string; prix: number; delai: string; description: string };
+  launchBadge: string | null;
+  plusChoisiBadge: string;
+  finLancement: string | null;
+  /** PayDunya configuré côté serveur : paiement en ligne à la fin du formulaire. */
+  paymentOnline: boolean;
 }
 
-interface ServiceInfo {
-  name: string;
-  icon: string;
-  shortDesc: string;
-  longDesc: string;
-  packs: Record<string, PackInfo>;
+/** URL de paiement acceptée pour la redirection (évite toute redirection ouverte). */
+function isPaydunyaUrl(u: unknown): u is string {
+  try {
+    const url = new URL(String(u));
+    return url.protocol === 'https:' && (url.hostname === 'paydunya.com' || url.hostname.endsWith('.paydunya.com'));
+  } catch {
+    return false;
+  }
 }
 
-const SERVICES_INFO: Record<string, ServiceInfo> = {
-  cv: {
-    name: 'CV Pro ATS',
-    icon: '📄',
-    shortDesc: 'Un CV optimisé qui passe les filtres ATS et décroche des entretiens.',
-    longDesc:
-      'Nos experts rédigent un CV moderne, optimisé pour les robots de recrutement (ATS) et calibré pour le marché ivoirien et international.',
-    packs: {
-      standard: {
-        name: 'CV Pro ATS',
-        price: 15000,
-        delay: '48h',
-        description: 'CV optimisé ATS, prêt à convaincre recruteurs et robots',
-        features: [
-          'CV professionnel PDF + DOCX',
-          'Optimisation ATS avancée + rapport',
-          'Mots-clés adaptés à votre secteur',
-          'Retouches incluses',
-        ],
-      },
-      'cv-express': {
-        name: 'CV Pro ATS Express',
-        price: 20000,
-        delay: '24h',
-        description: 'Livraison prioritaire en 24h',
-        features: [
-          'Tout le pack standard',
-          'Livraison prioritaire en 24h',
-        ],
-      },
-    },
-  },
-  job: {
-    name: 'JobAssist',
-    icon: '🎯',
-    shortDesc: 'On postule pour vous aux meilleures offres et on suit vos candidatures.',
-    longDesc:
-      'On identifie les offres qui matchent votre profil, on rédige des candidatures sur mesure et on assure le suivi jusqu\'à l\'entretien.',
-    packs: {
-      'pack-3': {
-        name: 'JobAssist',
-        price: 30000,
-        delay: '72h',
-        description: 'On identifie les offres, on postule pour vous et on assure le suivi',
-        features: [
-          'Tout le CV Pro ATS, plus :',
-          'Lettre de motivation personnalisée',
-          'Optimisation du profil LinkedIn',
-          'Coaching candidature',
-        ],
-      },
-      'job-express': {
-        name: 'JobAssist Express',
-        price: 35000,
-        delay: '48h',
-        description: 'Livraison prioritaire en 48h',
-        features: [
-          'Tout le pack standard',
-          'Livraison prioritaire en 48h',
-        ],
-      },
-    },
+function initialFromUrl(params: URLSearchParams, offres: OffreAffichee[]) {
+  // On ouvre TOUJOURS sur le choix de l'offre (pré-sélectionnée) pour que l'option Express soit visible.
+  const r = resolvePack(params.get('offre') || params.get('pack'));
+  const express = params.get('express') === '1' || Boolean(r?.express);
+  if (r && offres.some((o) => o.id === r.offre.id)) {
+    return { step: 'offer-selection' as Step, offreId: r.offre.id as string, express };
   }
-};
-
-const SERVICE_ALIASES: Record<string, string> = {
-  '1-candidature': 'candidature-1',
-  audit: 'par-dossier',
-  standard: 'mensuel-tender',
-  premium: 'annuel',
-};
-
-const WHATSAPP_NUMBER = '2250799076241';
-const WHATSAPP_DISPLAY = '+225 07 99 07 62 41';
-
-function determineInitialStep(
-  serviceParam: string | null,
-  packParam: string | null
-): { step: Step; serviceId: string; packId: string } {
-  if (!serviceParam || !SERVICES_INFO[serviceParam]) {
-    return { step: 'service-selection', serviceId: '', packId: '' };
-  }
-
-  const service = SERVICES_INFO[serviceParam];
-
-  if (!packParam) {
-    const packSlugs = Object.keys(service.packs);
-    if (packSlugs.length === 1) {
-      return { step: 'contact', serviceId: serviceParam, packId: packSlugs[0] };
-    }
-    return { step: 'pack-selection', serviceId: serviceParam, packId: '' };
-  }
-
-  const resolvedPack = service.packs[packParam]
-    ? packParam
-    : SERVICE_ALIASES[packParam] && service.packs[SERVICE_ALIASES[packParam]]
-      ? SERVICE_ALIASES[packParam]
-      : '';
-
-  if (!resolvedPack) {
-    const packSlugs = Object.keys(service.packs);
-    if (packSlugs.length === 1) {
-      return { step: 'contact', serviceId: serviceParam, packId: packSlugs[0] };
-    }
-    return { step: 'pack-selection', serviceId: serviceParam, packId: '' };
-  }
-
-  return { step: 'contact', serviceId: serviceParam, packId: resolvedPack };
+  const service = params.get('service');
+  const duService = offres.filter((o) => o.service === service);
+  return { step: 'offer-selection' as Step, offreId: duService.length === 1 ? duService[0].id : '', express };
 }
 
-export default function CommandeForm() {
+/** Chiffres nationaux saisis (sans indicatif) : 10 chiffres pour la Côte d'Ivoire. */
+function chiffresNationaux(raw: string): string {
+  let d = raw.replace(/\D/g, '');
+  if (d.startsWith('00225')) d = d.slice(5);
+  else if (d.startsWith('225') && d.length > 10) d = d.slice(3);
+  return d;
+}
+
+/** Affichage « 07 00 00 00 00 » pendant la saisie. */
+function formaterSaisie(raw: string): string {
+  return chiffresNationaux(raw).slice(0, 10).replace(/(\d{2})(?=\d)/g, '$1 ');
+}
+
+export default function CommandeForm({ offres, express: EXPRESS, launchBadge, plusChoisiBadge, finLancement, paymentOnline }: CommandeFormProps) {
   const searchParams = useSearchParams();
-  const initial = determineInitialStep(
-    searchParams.get('service'),
-    searchParams.get('pack')
-  );
+  const initial = initialFromUrl(new URLSearchParams(searchParams.toString()), offres);
 
   const [step, setStep] = useState<Step>(initial.step);
-  const [serviceId, setServiceId] = useState<string>(initial.serviceId);
-  const [packId, setPackId] = useState<string>(initial.packId);
+  const [offreId, setOffreId] = useState<string>(initial.offreId);
+  const [withExpress, setWithExpress] = useState<boolean>(initial.express);
 
-  const service = serviceId ? SERVICES_INFO[serviceId] : null;
-  const pack = service && packId ? service.packs[packId] : null;
+  const offre = offres.find((o) => o.id === offreId) || null;
+  // Affichage uniquement : le montant facturé est recalculé par le serveur.
+  const total = offre ? offre.prix + (withExpress ? EXPRESS.prix : 0) : 0;
+  const totalBarre = offre && offre.prixBarre !== null ? offre.prixBarre + (withExpress ? EXPRESS.prix : 0) : null;
+  const delai = withExpress ? EXPRESS.delai : offre?.delai;
+  const libelle = offre ? (withExpress ? `${offre.nom} + ${EXPRESS.nom}` : offre.nom) : '';
 
-  const [firstName, setFirstName] = useState('');
-  const [whatsappNumber, setWhatsappNumber] = useState('');
   const [hasCV, setHasCV] = useState<boolean | null>(null);
   const [cvFile, setCvFile] = useState<File | null>(null);
-  const [sector, setSector] = useState('');
-  const [jobTitle, setJobTitle] = useState('');
-  const [experienceYears, setExperienceYears] = useState('');
-  const [education, setEducation] = useState('');
-  const [briefNote, setBriefNote] = useState('');
+  const [nomComplet, setNomComplet] = useState('');
+  const [whatsappNumber, setWhatsappNumber] = useState('');
+  const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [result, setResult] = useState<{ ref: string; montant: number; message: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const formatPrice = (p: number) => new Intl.NumberFormat('fr-FR').format(p);
+  const firstName = nomComplet.trim().split(/\s+/)[0] || '';
+  const formatPrice = (p: number) => p.toLocaleString('fr-FR').replace(/ | /g, ' ');
+  const submitLabel = paymentOnline ? `Payer ${formatPrice(total)} FCFA →` : 'Confirmer la commande →';
 
-  const isContactValid =
-    firstName.trim().length >= 2 &&
-    whatsappNumber.replace(/\D/g, '').length >= 9;
-
-  const handleServiceSelect = (id: string) => {
-    const svc = SERVICES_INFO[id];
-    const packSlugs = svc ? Object.keys(svc.packs) : [];
-    setServiceId(id);
-    if (packSlugs.length === 1) {
-      setPackId(packSlugs[0]);
-      setStep('contact');
-    } else {
-      setPackId('');
-      setStep('pack-selection');
-    }
-  };
-
-  const handlePackSelect = (slug: string) => {
-    setPackId(slug);
-  };
+  const telOk = /^\d{10}$/.test(chiffresNationaux(whatsappNumber));
+  const emailOk = email.trim() === '' || /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
+  const nomOk = nomComplet.trim().length >= 2;
+  const canSubmit = nomOk && telOk && emailOk && (hasCV === false || !!cvFile) && !isSubmitting;
 
   const handleFileSelect = (file: File) => {
-    const isPDF = file.name.toLowerCase().endsWith('.pdf');
-    const isDOCX = file.name.toLowerCase().endsWith('.docx');
-    if (!isPDF && !isDOCX) { setError('PDF ou DOCX uniquement'); return; }
-    if (file.size > 5 * 1024 * 1024) { setError('Max 5 Mo'); return; }
+    const n = file.name.toLowerCase();
+    if (!n.endsWith('.pdf') && !n.endsWith('.docx')) { setError('PDF ou DOCX uniquement'); return; }
+    if (file.size > MAX_CV_BYTES) { setError('Fichier trop lourd : 5 Mo maximum'); return; }
     setError(null);
     setCvFile(file);
   };
 
-  const handleNextStep = () => {
-    setError(null);
-    if (step === 'contact' && isContactValid) setStep('cv-question');
-  };
-
   const handleCVChoice = (choice: boolean) => {
     setHasCV(choice);
-    setStep(choice ? 'with-cv' : 'without-cv');
+    if (!choice) setCvFile(null);
+    setError(null);
+    setStep('details');
   };
 
   const handleSubmit = async () => {
-    if (!service || !pack) return;
+    if (!offre || hasCV === null) return;
     setError(null);
     setIsSubmitting(true);
 
     try {
-      let cleanWhatsapp = whatsappNumber.replace(/\D/g, '');
-      if (!cleanWhatsapp.startsWith('225')) cleanWhatsapp = `225${cleanWhatsapp}`;
-
+      // Aucun prix n'est envoyé : le serveur le calcule (offre + Express + date de lancement).
       const formData = new FormData();
-      formData.append('service', serviceId);
-      formData.append('serviceName', service.name);
-      formData.append('packId', packId);
-      formData.append('packName', pack.name);
-      formData.append('packPrice', String(pack.price));
-      formData.append('packDelay', pack.delay);
-      formData.append('firstName', firstName.trim());
-      formData.append('whatsappNumber', cleanWhatsapp);
+      formData.append('offre', offre.id);
+      formData.append('express', String(withExpress));
+      formData.append('nomComplet', nomComplet.trim());
+      formData.append('whatsappNumber', `225${chiffresNationaux(whatsappNumber)}`);
+      if (email.trim()) formData.append('email', email.trim());
       formData.append('hasCV', String(hasCV));
-
-      if (hasCV && cvFile) {
-        formData.append('cv', cvFile);
-      }
-
-      if (!hasCV) {
-        formData.append('sector', sector);
-        formData.append('jobTitle', jobTitle.trim());
-        formData.append('experienceYears', experienceYears);
-        formData.append('education', education.trim());
-        formData.append('briefNote', briefNote.trim());
-      }
+      if (hasCV && cvFile) formData.append('cv', cvFile);
 
       const response = await fetch('/api/order', { method: 'POST', body: formData });
+      const data = await response.json().catch(() => ({}));
 
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) {
         throw new Error(data.error || 'Erreur lors de la commande');
       }
 
+      if (data.payment === 'paydunya' && isPaydunyaUrl(data.checkout_url)) {
+        window.location.href = data.checkout_url;
+        return;
+      }
+
+      setResult({ ref: data.ref, montant: data.montant, message: data.message || '' });
       setStep('success');
     } catch (err: any) {
       setError(err.message || 'Erreur lors de la commande');
@@ -265,50 +147,40 @@ export default function CommandeForm() {
     }
   };
 
-  // ─── ÉTAPE SUCCESS — MEGA BLOC WHATSAPP ─────────────────────────────────────────
-  if (step === 'success' && service && pack) {
+  // ─── SUCCÈS SANS PAIEMENT EN LIGNE (repli WhatsApp) ─────────────────────────────
+  if (step === 'success' && offre && result) {
     const successWhatsappMessage = encodeURIComponent(
-      `Bonjour CVPro225, je viens de commander le pack ${pack.name} (${service.name}). Mon prénom : ${firstName}. Je souhaite confirmer le paiement.`
+      `Bonjour CVPro225, je viens de passer la commande ${result.ref} (${libelle}, ${formatPrice(result.montant)} FCFA). Mon prénom : ${firstName}. Je souhaite finaliser le paiement.`
     );
 
     return (
       <div className="mx-auto max-w-2xl p-4 md:p-6">
         <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-xl">
-          {/* HEADER SUCCÈS — version subtile */}
           <div className="border-b border-gray-100 bg-gradient-to-br from-green-50 to-white p-6 text-center text-dark md:p-10">
             <div className="mb-4 inline-flex h-20 w-20 items-center justify-center rounded-full bg-green-100 md:h-24 md:w-24">
               <span className="text-5xl md:text-6xl">🎉</span>
             </div>
             <h2 className="mb-3 font-heading text-2xl font-bold text-dark md:text-3xl">
-              Commande reçue, {firstName} !
+              Commande enregistrée, {firstName} !
             </h2>
             <p className="mx-auto max-w-md text-base text-text-gray md:text-lg">
-              Votre commande pour le pack <strong className="text-primary">{pack.name}</strong> est bien enregistrée.
+              <strong className="text-primary">{libelle}</strong> · {formatPrice(result.montant)} FCFA
             </p>
+            <p className="mt-2 font-mono text-sm text-gray-500">Réf : {result.ref}</p>
           </div>
 
           <div className="p-5 md:p-8">
-            {/* Prochaine étape — jaune subtil */}
             <div className="mb-6 rounded-lg border-l-4 border-yellow-500 bg-yellow-50 p-4 md:p-5">
               <h3 className="mb-2 text-sm font-bold text-yellow-900 md:text-base">📋 Prochaine étape</h3>
               <p className="text-sm text-yellow-800 md:text-base">
-                Notre équipe vous contacte sur WhatsApp dans <strong>les 2 heures</strong> pour confirmer et procéder au paiement (50% à la commande).
+                {result.message || 'Contactez-nous sur WhatsApp pour finaliser votre commande.'}
               </p>
             </div>
 
-            {/* MEGA BLOC WHATSAPP — fond blanc, accents verts */}
             <div className="rounded-2xl border-2 border-green-500 bg-white p-5 text-center shadow-2xl md:p-8">
-              <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-green-50 md:h-20 md:w-20">
-                <span className="text-4xl md:text-5xl">📱</span>
-              </div>
-
               <h3 className="mb-3 font-heading text-xl font-bold text-dark md:text-2xl">
-                Pour accélérer, contactez-nous
+                Finalisez sur WhatsApp
               </h3>
-              <p className="mx-auto mb-6 max-w-md text-sm text-text-gray md:text-base">
-                Envoyez-nous &quot;Bonjour&quot; sur WhatsApp, on vous répond immédiatement
-              </p>
-
               <div className="mb-6 inline-block max-w-full rounded-xl border border-gray-200 bg-gray-50 p-4 md:p-6">
                 <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">
                   Appelez ou écrivez sur WhatsApp
@@ -341,146 +213,73 @@ export default function CommandeForm() {
     );
   }
 
-  // ─── ÉTAPE -1 — CHOIX DU SERVICE ────────────────────────────────────────────────
-  if (step === 'service-selection') {
+  // ─── ÉTAPE 0 — CHOIX DE L'OFFRE + OPTION EXPRESS ────────────────────────────────
+  if (step === 'offer-selection' || !offre) {
     return (
-      <div className="mx-auto max-w-5xl p-4 md:p-6">
+      <div className="mx-auto max-w-6xl p-4 md:p-6">
         <div className="mb-8 text-center">
           <h1 className="mb-3 font-heading text-3xl font-bold text-dark md:text-4xl">
-            Quel service vous intéresse ?
+            Choisissez votre offre
           </h1>
           <p className="mx-auto max-w-2xl text-base text-text-gray md:text-lg">
-            Choisissez le service CVPro225 qui correspond à votre besoin pour démarrer votre commande.
+            Sélectionnez la formule qui correspond à votre besoin. L&apos;option Express est disponible pour toutes les offres.
           </p>
+          {launchBadge && (
+            <p className="mx-auto mt-4 w-fit rounded-full bg-amber-100 px-5 py-2 text-sm font-semibold text-amber-900">
+              🎉 {launchBadge}{finLancement ? ` jusqu’au ${finLancement}` : ''}
+            </p>
+          )}
         </div>
 
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-          {Object.entries(SERVICES_INFO).map(([id, svc]) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => handleServiceSelect(id)}
-              className="group flex flex-col rounded-2xl border-2 border-gray-200 bg-white p-6 text-left shadow-md transition hover:-translate-y-1 hover:border-primary hover:shadow-xl md:p-8"
-            >
-              <div className="mb-4 text-5xl">{svc.icon}</div>
-              <h3 className="mb-2 font-heading text-xl font-bold text-dark md:text-2xl">
-                {svc.name}
-              </h3>
-              <p className="mb-4 flex-1 text-sm text-text-gray md:text-base">
-                {svc.shortDesc}
-              </p>
-              <p className="mb-5 text-sm text-text-gray">
-                {svc.longDesc}
-              </p>
-              <div className="mt-auto flex items-center justify-between">
-                <span className="text-xs font-medium uppercase tracking-wide text-text-gray">
-                  À partir de {formatPrice(Math.min(...Object.values(svc.packs).map((p) => p.price)))} FCFA
-                </span>
-                <span className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white transition group-hover:bg-primary-600">
-                  Choisir →
-                </span>
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (!service) {
-    return (
-      <div className="mx-auto max-w-2xl p-8 text-center">
-        <p className="text-text-gray">Service non trouvé.</p>
-        <button
-          type="button"
-          onClick={() => setStep('service-selection')}
-          className="mt-4 rounded-xl bg-primary px-6 py-3 font-semibold text-white hover:bg-primary-600"
-        >
-          Choisir un service
-        </button>
-      </div>
-    );
-  }
-
-  // ─── ÉTAPE 0 — CHOIX DU PACK ───────────────────────────────────────────────────
-  if (step === 'pack-selection') {
-    const uniquePacks = Object.entries(service.packs).filter(([, p], idx, arr) => {
-      const sig = `${p.name}|${p.price}`;
-      return arr.findIndex(([, q]) => `${q.name}|${q.price}` === sig) === idx;
-    });
-
-    return (
-      <div className="mx-auto max-w-5xl p-4 md:p-6">
-        <button
-          type="button"
-          onClick={() => {
-            setPackId('');
-            setStep('service-selection');
-          }}
-          className="mb-4 inline-flex items-center gap-1 text-sm text-text-gray hover:text-dark"
-        >
-          ← Changer de service
-        </button>
-
-        <div className="mb-6 rounded-2xl bg-gradient-to-br from-primary to-primary-600 p-6 text-white shadow-xl md:p-8">
-          <div className="flex items-center gap-4">
-            <div className="text-5xl">{service.icon}</div>
-            <div>
-              <h1 className="mb-1 font-heading text-2xl font-bold md:text-3xl">{service.name}</h1>
-              <p className="text-base opacity-90">{service.shortDesc}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="mb-6 text-center">
-          <h2 className="mb-2 font-heading text-2xl font-bold text-dark md:text-3xl">
-            Choisissez votre pack
-          </h2>
-          <p className="text-text-gray">
-            Sélectionnez la formule qui vous convient.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-          {uniquePacks.map(([slug, p]) => {
-            const isSelected = packId === slug;
+        <div className="grid grid-cols-1 items-stretch gap-6 pt-4 lg:grid-cols-3">
+          {offres.map((o) => {
+            const isSelected = offreId === o.id;
             return (
               <button
-                key={slug}
+                key={o.id}
                 type="button"
-                onClick={() => handlePackSelect(slug)}
+                onClick={() => setOffreId(o.id)}
+                aria-pressed={isSelected}
                 className={`relative flex flex-col rounded-2xl border-2 p-6 text-left transition ${
                   isSelected
-                    ? 'border-primary bg-primary/5 shadow-xl ring-2 ring-primary/20'
-                    : p.recommended
-                      ? 'border-primary/40 bg-white shadow-lg hover:border-primary hover:shadow-xl'
+                    ? 'border-primary bg-primary/5 shadow-xl ring-4 ring-primary/20'
+                    : o.plusChoisi
+                      ? 'border-primary bg-white shadow-xl hover:shadow-2xl lg:scale-105'
                       : 'border-gray-200 bg-white shadow-md hover:border-primary/50 hover:shadow-lg'
                 }`}
               >
-                {p.recommended && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary px-4 py-1 text-xs font-bold uppercase tracking-wide text-white shadow-md">
-                    ⭐ Recommandé
+                {o.plusChoisi && (
+                  <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-primary px-5 py-1.5 text-sm font-bold text-white shadow-md">
+                    ⭐ {plusChoisiBadge}
                   </span>
                 )}
 
-                <h3 className="mb-1 font-heading text-xl font-bold text-dark md:text-2xl">
-                  {p.name}
-                </h3>
-                <p className="mb-4 text-sm text-text-gray">{p.description}</p>
+                <h3 className="mb-1 font-heading text-xl font-bold text-dark md:text-2xl">{o.nom}</h3>
+                <p className="mb-4 text-sm text-text-gray">{o.accroche}</p>
 
+                {launchBadge && o.prixBarre !== null && (
+                  <span className="mb-1 inline-flex w-fit rounded-full bg-amber-100 px-2.5 py-0.5 text-[0.6875rem] font-bold uppercase tracking-wide text-amber-800">
+                    🎉 {launchBadge}
+                  </span>
+                )}
                 <div className="mb-4">
-                  <span className="font-heading text-3xl font-bold text-primary md:text-4xl">
-                    {formatPrice(p.price)}
+                  {o.prixBarre !== null && (
+                    <p className="text-sm text-gray-400">
+                      <span className="sr-only">Prix normal : </span><s>{formatPrice(o.prixBarre)} FCFA</s>
+                    </p>
+                  )}
+                  <span className={`font-heading font-bold text-primary ${o.plusChoisi ? 'text-4xl md:text-5xl' : 'text-3xl md:text-4xl'}`}>
+                    {formatPrice(o.prix)}
                   </span>
                   <span className="ml-1 text-sm font-medium text-text-gray">FCFA</span>
                 </div>
 
                 <p className="mb-4 inline-flex items-center gap-1 text-xs font-medium text-text-gray">
-                  ⏱️ Livraison {p.delay}
+                  ⏱️ Livraison {o.delai}
                 </p>
 
                 <ul className="mb-5 space-y-2">
-                  {p.features.map((f) => (
+                  {o.features.map((f) => (
                     <li key={f} className="flex items-start gap-2 text-sm text-dark">
                       <span className="mt-0.5 flex-shrink-0 text-primary">✓</span>
                       <span>{f}</span>
@@ -490,352 +289,232 @@ export default function CommandeForm() {
 
                 <div
                   className={`mt-auto rounded-xl py-3 text-center text-sm font-semibold transition ${
-                    isSelected
-                      ? 'bg-primary text-white'
-                      : 'bg-gray-100 text-dark group-hover:bg-primary group-hover:text-white'
+                    isSelected ? 'bg-primary text-white' : 'bg-gray-100 text-dark'
                   }`}
                 >
-                  {isSelected ? '✓ Sélectionné' : 'Choisir ce pack'}
+                  {isSelected ? '✓ Sélectionnée' : 'Choisir cette offre'}
                 </div>
               </button>
             );
           })}
         </div>
 
-        <div className="mt-6">
+        <label className="mx-auto mt-8 flex max-w-3xl cursor-pointer items-center gap-4 rounded-2xl border-2 border-gray-200 bg-white p-5 shadow-sm transition hover:border-primary/50 has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+          <input
+            type="checkbox"
+            checked={withExpress}
+            onChange={(e) => setWithExpress(e.target.checked)}
+            className="h-6 w-6 flex-shrink-0 accent-primary"
+          />
+          <span className="flex-1">
+            <span className="block font-heading font-bold text-dark">⚡ {EXPRESS.nom} — livraison en {EXPRESS.delai}</span>
+            <span className="block text-sm text-text-gray">{EXPRESS.description}, quelle que soit l&apos;offre choisie.</span>
+          </span>
+          <span className="whitespace-nowrap font-heading text-lg font-extrabold text-primary">+{formatPrice(EXPRESS.prix)} FCFA</span>
+        </label>
+
+        <div className="mx-auto mt-6 max-w-3xl">
           <button
             type="button"
-            onClick={() => packId && setStep('contact')}
-            disabled={!packId}
+            onClick={() => offre && setStep('cv-question')}
+            disabled={!offre}
             className={`w-full rounded-xl py-4 text-lg font-semibold transition ${
-              packId
-                ? 'bg-primary text-white shadow-lg hover:bg-primary-600'
-                : 'cursor-not-allowed bg-gray-300 text-white'
+              offre ? 'bg-primary text-white shadow-lg hover:bg-primary-600' : 'cursor-not-allowed bg-gray-300 text-white'
             }`}
           >
-            {packId ? 'Continuer →' : 'Sélectionnez un pack'}
+            {offre ? `Continuer — ${formatPrice(total)} FCFA →` : 'Sélectionnez une offre'}
           </button>
         </div>
       </div>
     );
   }
 
-  // ─── RENDU PRINCIPAL (contact / cv-question / with-cv / without-cv) ─────────────
-  if (!pack) {
-    return (
-      <div className="mx-auto max-w-2xl p-8 text-center">
-        <p className="text-text-gray">Pack non trouvé.</p>
-        <button
-          type="button"
-          onClick={() => setStep('pack-selection')}
-          className="mt-4 rounded-xl bg-primary px-6 py-3 font-semibold text-white hover:bg-primary-600"
-        >
-          Choisir un pack
-        </button>
-      </div>
-    );
-  }
 
+  // ─── ÉTAPES 2 ET 3 — CV ? puis coordonnées ──────────────────────────────────────
   return (
     <div className="mx-auto max-w-3xl p-4 md:p-6">
       <div className="mb-4 flex flex-wrap items-center gap-3 text-sm">
         <button
           type="button"
-          onClick={() => {
-            setPackId('');
-            setStep('service-selection');
-          }}
-          className="text-text-gray hover:text-dark"
+          onClick={() => setStep('offer-selection')}
+          className="py-2 text-text-gray hover:text-dark"
         >
-          ← Changer de service
-        </button>
-        <span className="text-gray-300">·</span>
-        <button
-          type="button"
-          onClick={() => setStep('pack-selection')}
-          className="text-text-gray hover:text-dark"
-        >
-          ← Changer de pack
+          ← Changer d&apos;offre ou d&apos;option
         </button>
       </div>
 
-      <div className="mb-6 rounded-2xl bg-gradient-to-br from-primary to-primary-600 p-6 text-white shadow-xl md:p-8">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
+      <div className="mb-6 rounded-2xl bg-gradient-to-br from-primary to-primary-600 p-5 text-white shadow-xl md:p-8">
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0">
             <p className="mb-1 text-sm opacity-80">Vous commandez :</p>
-            <h1 className="mb-1 font-heading text-2xl font-bold md:text-3xl">{service.name}</h1>
-            <p className="text-base opacity-90 md:text-lg">Pack {pack.name} · Livraison {pack.delay}</p>
+            <h1 className="mb-1 font-heading text-xl font-bold md:text-3xl">{offre.nom}</h1>
+            <p className="text-sm opacity-90 md:text-lg">
+              {withExpress ? `+ ${EXPRESS.nom} · ` : ''}Livraison {delai}
+            </p>
+            {launchBadge && totalBarre !== null && (
+              <span className="mt-2 inline-flex rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide">🎉 {launchBadge}</span>
+            )}
           </div>
-          <div className="text-right">
-            <p className="text-3xl font-bold md:text-4xl">{formatPrice(pack.price)}</p>
+          <div className="flex-shrink-0 text-right">
+            {totalBarre !== null && <p className="text-sm opacity-70"><s>{formatPrice(totalBarre)} FCFA</s></p>}
+            <p className="text-2xl font-bold md:text-4xl">{formatPrice(total)}</p>
             <p className="text-sm opacity-80">FCFA</p>
           </div>
         </div>
       </div>
 
-      <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-xl md:p-8">
-        {/* ÉTAPE 1 — CONTACT */}
-        {step === 'contact' && (
-          <div className="space-y-5">
-            <h2 className="mb-4 font-heading text-xl font-bold text-dark md:text-2xl">
-              📝 Vos informations
-            </h2>
-
-            <div>
-              <label className="mb-2 block font-semibold text-dark">Votre prénom</label>
-              <input
-                type="text"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                placeholder="Konan"
-                className="w-full rounded-xl border-2 border-gray-300 px-4 py-3 focus:border-primary focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block font-semibold text-dark">Votre numéro WhatsApp</label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 font-medium text-text-gray">+225</span>
-                <input
-                  type="tel"
-                  value={whatsappNumber}
-                  onChange={(e) => setWhatsappNumber(e.target.value)}
-                  placeholder="07 99 07 62 41"
-                  className="w-full rounded-xl border-2 border-gray-300 py-3 pl-16 pr-4 focus:border-primary focus:outline-none"
-                />
-              </div>
-              <p className="mt-1 text-xs text-text-gray">
-                Pour vous contacter et procéder au paiement
-              </p>
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setStep('pack-selection')}
-                className="rounded-xl border-2 border-gray-300 px-6 py-3 font-medium text-dark hover:bg-gray-50"
-              >
-                ← Retour
-              </button>
-              <button
-                type="button"
-                onClick={handleNextStep}
-                disabled={!isContactValid}
-                className={`flex-1 rounded-xl py-3 text-lg font-semibold transition ${
-                  isContactValid
-                    ? 'bg-primary text-white shadow-lg hover:bg-primary-600'
-                    : 'cursor-not-allowed bg-gray-300 text-white'
-                }`}
-              >
-                Continuer →
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ÉTAPE 2 — QUESTION CV */}
+      <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-xl md:p-8">
+        {/* ÉTAPE 2 — UNE SEULE QUESTION */}
         {step === 'cv-question' && (
-          <div className="space-y-6">
-            <h2 className="mb-2 text-center font-heading text-xl font-bold text-dark md:text-2xl">
+          <div>
+            <h2 className="mb-6 text-center font-heading text-2xl font-bold text-dark">
               Avez-vous déjà un CV ?
             </h2>
-            <p className="mb-6 text-center text-text-gray">
-              Si oui, nous pouvons l&apos;optimiser. Sinon, nous le créons pour vous.
-            </p>
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <button
                 type="button"
                 onClick={() => handleCVChoice(true)}
-                className="group rounded-2xl border-2 border-gray-300 p-6 text-center transition hover:border-primary hover:bg-primary/5 md:p-8"
+                className="min-h-[7rem] rounded-2xl border-2 border-gray-300 p-6 text-center transition hover:border-primary hover:bg-primary/5 active:scale-[0.98]"
               >
-                <div className="mb-3 text-5xl">📄</div>
-                <h3 className="mb-2 text-lg font-bold text-dark">Oui, j&apos;ai déjà un CV</h3>
-                <p className="text-sm text-text-gray">Je l&apos;envoie pour optimisation</p>
+                <span className="block text-4xl" aria-hidden="true">📄</span>
+                <span className="mt-2 block text-xl font-bold text-dark">Oui</span>
+                <span className="block text-sm text-text-gray">Je l&apos;envoie pour optimisation</span>
               </button>
-
               <button
                 type="button"
                 onClick={() => handleCVChoice(false)}
-                className="group rounded-2xl border-2 border-gray-300 p-6 text-center transition hover:border-primary hover:bg-primary/5 md:p-8"
+                className="min-h-[7rem] rounded-2xl border-2 border-gray-300 p-6 text-center transition hover:border-primary hover:bg-primary/5 active:scale-[0.98]"
               >
-                <div className="mb-3 text-5xl">✨</div>
-                <h3 className="mb-2 text-lg font-bold text-dark">Non, à créer</h3>
-                <p className="text-sm text-text-gray">Je n&apos;ai pas de CV existant</p>
+                <span className="block text-4xl" aria-hidden="true">✨</span>
+                <span className="mt-2 block text-xl font-bold text-dark">Non</span>
+                <span className="block text-sm text-text-gray">Vous le créez pour moi</span>
               </button>
             </div>
-
-            <button
-              type="button"
-              onClick={() => setStep('contact')}
-              className="mt-4 w-full text-sm text-text-gray underline hover:text-dark"
-            >
-              ← Retour
-            </button>
           </div>
         )}
 
-        {/* ÉTAPE 3a — AVEC CV */}
-        {step === 'with-cv' && (
+        {/* ÉTAPE 3 — CV (si oui) + coordonnées */}
+        {step === 'details' && (
           <div className="space-y-5">
-            <h2 className="mb-2 font-heading text-xl font-bold text-dark md:text-2xl">
-              📄 Envoyez votre CV
-            </h2>
-            <p className="mb-4 text-text-gray">
-              Notre équipe l&apos;analysera et l&apos;optimisera selon votre cible.
-            </p>
-
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              className={`cursor-pointer rounded-xl border-2 border-dashed px-6 py-10 text-center transition ${
-                cvFile ? 'border-primary bg-primary/5' : 'border-gray-300 hover:border-primary'
-              }`}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
-                className="hidden"
-              />
-              {cvFile ? (
-                <div>
-                  <div className="mb-3 text-5xl">✅</div>
-                  <p className="font-semibold text-dark">{cvFile.name}</p>
-                  <p className="mt-2 text-xs text-text-gray">Cliquer pour changer</p>
-                </div>
-              ) : (
-                <div>
-                  <div className="mb-3 text-5xl">📄</div>
-                  <p className="mb-1 font-medium text-dark">Glissez votre CV ou cliquez</p>
-                  <p className="text-xs text-text-gray">PDF ou DOCX, max 5 Mo</p>
-                </div>
-              )}
-            </div>
-
-            {error && (
-              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
+            {hasCV ? (
+              <div>
+                <label className="mb-2 block font-semibold text-dark">Votre CV</label>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`w-full rounded-xl border-2 border-dashed px-6 py-8 text-center transition ${
+                    cvFile ? 'border-primary bg-primary/5' : 'border-gray-300 hover:border-primary'
+                  }`}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
+                    className="hidden"
+                  />
+                  {cvFile ? (
+                    <>
+                      <span className="block text-4xl" aria-hidden="true">✅</span>
+                      <span className="mt-2 block break-all font-semibold text-dark">{cvFile.name}</span>
+                      <span className="mt-1 block text-xs text-text-gray">Toucher pour changer</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="block text-4xl" aria-hidden="true">📄</span>
+                      <span className="mt-2 block font-medium text-dark">Choisir mon CV</span>
+                      <span className="block text-xs text-text-gray">PDF ou DOCX, 5 Mo maximum</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            ) : (
+              <div className="rounded-xl border-l-4 border-primary bg-primary/5 p-4 text-dark">
+                Pas de souci ! Un conseiller vous contactera sur WhatsApp après votre paiement pour recueillir vos informations.
+              </div>
             )}
 
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setStep('cv-question')}
-                className="rounded-xl border-2 border-gray-300 px-6 py-3 font-medium text-dark hover:bg-gray-50"
-              >
-                ← Retour
-              </button>
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={!cvFile || isSubmitting}
-                className={`flex-1 rounded-xl py-3 text-lg font-semibold transition ${
-                  cvFile && !isSubmitting
-                    ? 'bg-primary text-white shadow-lg hover:bg-primary-600'
-                    : 'cursor-not-allowed bg-gray-300 text-white'
-                }`}
-              >
-                {isSubmitting ? 'Envoi en cours…' : 'Confirmer la commande →'}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ÉTAPE 3b — SANS CV */}
-        {step === 'without-cv' && (
-          <div className="space-y-5">
-            <h2 className="mb-2 font-heading text-xl font-bold text-dark md:text-2xl">
-              ✨ Création de votre CV
-            </h2>
-            <p className="mb-4 text-text-gray">Quelques infos pour personnaliser votre CV.</p>
-
             <div>
-              <label className="mb-2 block font-semibold text-dark">Secteur d&apos;activité</label>
-              <select
-                value={sector}
-                onChange={(e) => setSector(e.target.value)}
-                className="w-full cursor-pointer rounded-xl border-2 border-gray-300 px-4 py-3 focus:border-primary focus:outline-none"
-              >
-                <option value="">Choisissez votre secteur...</option>
-                {SECTORS.map((s) => (<option key={s.id} value={s.id}>{s.label}</option>))}
-              </select>
-            </div>
-
-            <div>
-              <label className="mb-2 block font-semibold text-dark">Poste recherché</label>
+              <label htmlFor="cmd-nom" className="mb-2 block font-semibold text-dark">Nom complet</label>
               <input
+                id="cmd-nom"
                 type="text"
-                value={jobTitle}
-                onChange={(e) => setJobTitle(e.target.value)}
-                placeholder="Ex: Comptable, Chef de projet, Développeur..."
-                className="w-full rounded-xl border-2 border-gray-300 px-4 py-3 focus:border-primary focus:outline-none"
+                autoComplete="name"
+                autoCapitalize="words"
+                value={nomComplet}
+                onChange={(e) => setNomComplet(e.target.value)}
+                placeholder="Konan Kouassi"
+                className="w-full rounded-xl border-2 border-gray-300 px-4 py-3.5 text-base focus:border-primary focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="mb-2 block font-semibold text-dark">Années d&apos;expérience</label>
-              <select
-                value={experienceYears}
-                onChange={(e) => setExperienceYears(e.target.value)}
-                className="w-full cursor-pointer rounded-xl border-2 border-gray-300 px-4 py-3 focus:border-primary focus:outline-none"
-              >
-                <option value="">Sélectionnez...</option>
-                <option value="0-1">Débutant (0-1 an)</option>
-                <option value="2-5">2 à 5 ans</option>
-                <option value="6-10">6 à 10 ans</option>
-                <option value="10+">Plus de 10 ans</option>
-              </select>
+              <label htmlFor="cmd-whatsapp" className="mb-2 block font-semibold text-dark">Numéro WhatsApp</label>
+              <div className="flex overflow-hidden rounded-xl border-2 border-gray-300 focus-within:border-primary">
+                <span className="flex items-center bg-gray-50 px-4 text-base font-medium text-text-gray" aria-hidden="true">+225</span>
+                <input
+                  id="cmd-whatsapp"
+                  type="tel"
+                  inputMode="numeric"
+                  autoComplete="tel-national"
+                  value={whatsappNumber}
+                  onChange={(e) => setWhatsappNumber(formaterSaisie(e.target.value))}
+                  placeholder="07 00 00 00 00"
+                  aria-describedby="cmd-whatsapp-aide"
+                  className="w-full px-4 py-3.5 text-base tracking-wide focus:outline-none"
+                />
+              </div>
+              <p id="cmd-whatsapp-aide" className={`mt-1 text-xs ${whatsappNumber && !telOk ? 'text-red-600' : 'text-text-gray'}`}>
+                {whatsappNumber && !telOk ? '10 chiffres attendus' : 'Pour échanger avec vous pendant la rédaction'}
+              </p>
             </div>
 
             <div>
-              <label className="mb-2 block font-semibold text-dark">Formation principale</label>
-              <input
-                type="text"
-                value={education}
-                onChange={(e) => setEducation(e.target.value)}
-                placeholder="Ex: Master en gestion, Licence informatique..."
-                className="w-full rounded-xl border-2 border-gray-300 px-4 py-3 focus:border-primary focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block font-semibold text-dark">
-                Quelques infos complémentaires <span className="text-sm font-normal text-text-gray">(optionnel)</span>
+              <label htmlFor="cmd-email" className="mb-2 block font-semibold text-dark">
+                Email <span className="text-sm font-normal text-text-gray">(optionnel)</span>
               </label>
-              <textarea
-                value={briefNote}
-                onChange={(e) => setBriefNote(e.target.value)}
-                placeholder="Compétences clés, certifications, langues parlées..."
-                rows={4}
-                className="w-full resize-none rounded-xl border-2 border-gray-300 px-4 py-3 focus:border-primary focus:outline-none"
+              <input
+                id="cmd-email"
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Pour recevoir la confirmation et le reçu"
+                className="w-full rounded-xl border-2 border-gray-300 px-4 py-3.5 text-base focus:border-primary focus:outline-none"
               />
+              {!emailOk && <p className="mt-1 text-xs text-red-600">Email invalide</p>}
             </div>
 
             {error && (
-              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">{error}</div>
             )}
 
-            <div className="flex gap-3">
+            <div className="flex flex-col-reverse gap-3 sm:flex-row">
               <button
                 type="button"
                 onClick={() => setStep('cv-question')}
-                className="rounded-xl border-2 border-gray-300 px-6 py-3 font-medium text-dark hover:bg-gray-50"
+                className="rounded-xl border-2 border-gray-300 px-6 py-4 font-medium text-dark hover:bg-gray-50"
               >
                 ← Retour
               </button>
               <button
                 type="button"
                 onClick={handleSubmit}
-                disabled={!sector || !jobTitle.trim() || isSubmitting}
-                className={`flex-1 rounded-xl py-3 text-lg font-semibold transition ${
-                  sector && jobTitle.trim() && !isSubmitting
-                    ? 'bg-primary text-white shadow-lg hover:bg-primary-600'
-                    : 'cursor-not-allowed bg-gray-300 text-white'
+                disabled={!canSubmit}
+                className={`flex-1 rounded-xl py-4 text-lg font-bold transition ${
+                  canSubmit ? 'bg-primary text-white shadow-lg hover:bg-primary-600' : 'cursor-not-allowed bg-gray-300 text-white'
                 }`}
               >
-                {isSubmitting ? 'Envoi en cours…' : 'Confirmer la commande →'}
+                {isSubmitting ? 'Envoi en cours…' : submitLabel}
               </button>
             </div>
+
+            <p className="text-center text-xs text-text-gray">
+              {paymentOnline
+                ? '🔒 Paiement sécurisé via PayDunya : Orange Money, MTN MoMo ou carte bancaire.'
+                : 'Notre équipe vous contacte sur WhatsApp pour finaliser le paiement.'}
+            </p>
           </div>
         )}
       </div>

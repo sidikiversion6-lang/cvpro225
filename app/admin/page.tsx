@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma'
+import { ligneCommande } from '@/lib/commande-detail'
 import Link from 'next/link'
 import StatusBadge from '@/components/dashboard/StatusBadge'
-import { LABELS_SERVICE, LABELS_PACK } from '@/types/commande'
 import { formatPrix } from '@/lib/commande-config'
 
 export default async function AdminDashboardPage() {
@@ -90,7 +90,7 @@ export default async function AdminDashboardPage() {
                   <td className="px-4 py-3 font-mono text-xs text-gray-500">{c.ref}</td>
                   <td className="px-4 py-3 text-dark">{c.prenom} {c.nom}</td>
                   <td className="px-4 py-3 text-gray-600">
-                    {LABELS_SERVICE[c.service as keyof typeof LABELS_SERVICE]} — {LABELS_PACK[c.pack] || c.pack}
+                    {ligneCommande(c).libelle}
                   </td>
                   <td className="px-4 py-3 font-medium text-dark">{formatPrix(c.montant)}</td>
                   <td className="px-4 py-3"><StatusBadge statut={c.statut} /></td>

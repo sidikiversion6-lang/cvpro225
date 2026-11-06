@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { formatFcfa, getOffre, isLaunchActive, prixMin, prixOffre } from '@/lib/offres'
 
 export const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://cvpro225.com'
 export const SITE_NAME = 'CVPro225'
@@ -147,24 +148,6 @@ export const PAGE_METADATA = {
     // (sinon → "CVPro225 — CV ... — CVPro225", doublon)
     title: { absolute: 'CVPro225 — CV, Emploi & Appels d\'offres en Côte d\'Ivoire' },
   },
-  cvPro: buildMetadata({
-    title: 'CV Pro ATS — CV Professionnel Optimisé pour les Recruteurs',
-    description: 'Créez un CV professionnel optimisé ATS livré en 24-72h. Lettre de motivation incluse. Secteurs : mines, banque, ONG, télécoms. À partir de 15 000 FCFA.',
-    keywords: SEO_KEYWORDS.cv,
-    url: '/services/cv-pro',
-  }),
-  jobAssist: buildMetadata({
-    title: 'JobAssist — Assistance Candidature Emploi en Côte d\'Ivoire',
-    description: 'Veille des offres d\'emploi, rédaction de candidature complète et préparation aux entretiens. Secteurs mines, ONG, banque, télécoms. À partir de 30 000 FCFA.',
-    keywords: SEO_KEYWORDS.job,
-    url: '/services/job-assist',
-  }),
-  tarifs: buildMetadata({
-    title: 'Tarifs — CV, Emploi & Appels d\'offres',
-    description: 'Tous les tarifs CVPro225 en Francs CFA (FCFA). CV Pro à partir de 15 000 FCFA, JobAssist à partir de 30 000 FCFA.',
-    keywords: ['tarifs services professionnels Côte d\'Ivoire', 'prix CV professionnel Côte d\'Ivoire', 'prix candidature emploi Côte d\'Ivoire'],
-    url: '/tarifs',
-  }),
   blog: buildMetadata({
     title: 'Blog — Conseils CV, Emploi & Appels d\'Offres',
     description: 'Guides pratiques et conseils professionnels pour les Ivoiriens : comment créer un CV ATS, trouver un emploi à Abidjan, répondre à un appel d\'offres.',
@@ -178,7 +161,7 @@ export const PAGE_METADATA = {
   }),
   contact: buildMetadata({
     title: 'Contact — WhatsApp, Email, Abidjan',
-    description: 'Contactez CVPro225 par WhatsApp ou email. Réponse sous 30 minutes en heures ouvrables. Basés à Abidjan, Côte d\'Ivoire.',
+    description: 'Contactez CVPro225 par WhatsApp ou email. Réponse en 2h sur WhatsApp. Basés à Abidjan, Côte d\'Ivoire.',
     url: '/contact',
   }),
 }
@@ -204,5 +187,40 @@ export function buildArticleMetadata(article: {
     publishedAt: article.date_publication,
     updatedAt: article.updatedAt,
     author: article.auteur,
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Métadonnées contenant des PRIX : calculées à la requête (generateMetadata),
+// pour suivre l'offre de lancement sans redéploiement. Source : lib/offres.ts.
+// ---------------------------------------------------------------------------
+
+const prixDe = (id: string) => formatFcfa(prixOffre(getOffre(id)!))
+const lancement = () => (isLaunchActive() ? ' Offre de lancement en cours.' : '')
+
+export function metaCvPro(): Metadata {
+  return buildMetadata({
+    title: 'CV Pro ATS — CV Professionnel Optimisé pour les Recruteurs',
+    description: `CV professionnel optimisé ATS, livré en 48h (24h avec l'option Express). Avec ou sans lettre de motivation. Secteurs : mines, banque, ONG, télécoms. À partir de ${prixDe('cv-pro-ats')}.${lancement()}`,
+    keywords: SEO_KEYWORDS.cv,
+    url: '/services/cv-pro',
+  })
+}
+
+export function metaJobAssist(): Metadata {
+  return buildMetadata({
+    title: 'JobAssist — Assistance Candidature Emploi en Côte d\'Ivoire',
+    description: `CV Pro ATS, lettre de motivation, profil LinkedIn et coaching entretien. Secteurs mines, ONG, banque, télécoms. ${prixDe('jobassist')}.${lancement()}`,
+    keywords: SEO_KEYWORDS.job,
+    url: '/services/job-assist',
+  })
+}
+
+export function metaTarifs(): Metadata {
+  return buildMetadata({
+    title: 'Tarifs — CV Pro ATS, Lettre de motivation & JobAssist',
+    description: `Tous les tarifs CVPro225 en FCFA : CV Pro ATS ${prixDe('cv-pro-ats')}, CV + Lettre de motivation ${prixDe('cv-pro-ats-lettre')}, JobAssist ${prixDe('jobassist')}. Option Express 24h. À partir de ${formatFcfa(prixMin())}.${lancement()}`,
+    keywords: ['tarifs services professionnels Côte d\'Ivoire', 'prix CV professionnel Côte d\'Ivoire', 'prix candidature emploi Côte d\'Ivoire'],
+    url: '/tarifs',
   })
 }

@@ -163,6 +163,10 @@ export default function Footer() {
         <div className="gp-container flex flex-col items-center justify-between gap-3 py-5 sm:flex-row">
           <p className="text-xs text-gray-500">
             © {year} CVPro225. Tous droits réservés.
+            <span className="mx-2 text-gray-600" aria-hidden="true">·</span>
+            <Link href="/cgv" className="hover:text-white">CGV</Link>
+            <span className="mx-2 text-gray-600" aria-hidden="true">·</span>
+            <Link href="/confidentialite" className="hover:text-white">Confidentialité</Link>
           </p>
 
           {/* Mini drapeau ivoirien */}

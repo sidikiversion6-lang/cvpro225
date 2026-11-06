@@ -8,7 +8,7 @@ const SLIDES = [
   {
     image: '/ban.png',
     label: 'CV Pro ATS',
-    titre: 'Votre CV passe les filtres ATS. Décrochez 3x plus d\'entretiens.',
+    titre: 'Votre CV passe les filtres ATS. Décrochez plus d\'entretiens.',
     sousTitre: 'CV optimisé par des experts pour les recruteurs en Côte d\'Ivoire et à l\'international.',
     cta: 'Commander mon CV',
     href: '/services/cv-pro',

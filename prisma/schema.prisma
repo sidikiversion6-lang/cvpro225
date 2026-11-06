@@ -71,7 +71,8 @@ model Commande {
   pack             String
   nom              String
   prenom           String
-  email            String
+  /// Optionnel depuis le parcours court (pas d'email client = pas d'email Resend client)
+  email            String?
   telephone        String
   ville            String?
   statut           String    @default("pending")
@@ -82,6 +83,10 @@ model Commande {
   paydunya_token   String?   @unique
   paydunya_status  String?
   paid_at          DateTime?
+  /// Le client a-t-il fourni un CV existant ? null = commande antérieure à ce champ
+  a_un_cv          Boolean?
+  /// Chemin du CV fourni dans Supabase Storage (bucket privé "commandes-cv")
+  cv_fichier       String?
   livraison_url    String?
   livraison_note   String?
   delivered_at     DateTime?
@@ -97,6 +102,7 @@ model Commande {
   @@index([service])
   @@index([userId])
   @@index([paydunya_token])
+  @@index([a_un_cv])
   @@map("commandes")
 }
 

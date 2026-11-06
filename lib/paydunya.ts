@@ -1,3 +1,5 @@
+import { EXPRESS } from '@/lib/offres'
+import { ligneCommande } from '@/lib/commande-detail'
 interface PaydunyaConfig {
   masterKey: string
   privateKey: string
@@ -20,7 +22,8 @@ export interface PaydunyaCreateInvoiceParams {
   items: PaydunyaInvoiceItem[]
   clientNom: string
   clientPrenom: string
-  clientEmail: string
+  /** Optionnel : jamais d'adresse inventée. Le téléphone est toujours transmis. */
+  clientEmail?: string | null
   clientTelephone: string
   returnUrl: string
   cancelUrl: string
@@ -150,11 +153,11 @@ export async function createPaydunyaInvoice(
     },
     custom_data: {
       ref_commande: params.ref,
-      client_email: params.clientEmail,
+      ...(params.clientEmail ? { client_email: params.clientEmail } : {}),
     },
     customer: {
-      name: `${params.clientPrenom} ${params.clientNom}`,
-      email: params.clientEmail,
+      name: `${params.clientPrenom} ${params.clientNom}`.trim(),
+      ...(params.clientEmail ? { email: params.clientEmail } : {}),
       phone: params.clientTelephone,
     },
   }
@@ -196,37 +199,49 @@ export async function checkPaydunyaStatus(
   return res.json()
 }
 
+/**
+ * Paramètres de facture PayDunya à partir d'une commande ENREGISTRÉE.
+ * Le montant vient de commandes.montant (calculé côté serveur par
+ * lib/offres.ts#computeMontant à la création) ; les lignes (offre, Express)
+ * viennent du détail figé dans commandes.details. Si ce détail est absent ou
+ * incohérent, une seule ligne au montant total est envoyée.
+ */
 export function buildPaydunyaParams(commande: {
   ref: string
-  service: string
   pack: string
   montant: number
   nom: string
   prenom: string
-  email: string
+  email: string | null
   telephone: string
+  details?: unknown
 }): PaydunyaCreateInvoiceParams {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  const l = ligneCommande(commande)
+
+  const line = (name: string, price: number, description: string): PaydunyaInvoiceItem => ({
+    name, quantity: 1, unit_price: price, total_price: price, description,
+  })
+  let items: PaydunyaInvoiceItem[] = []
+  if (l.prixOffre !== null) {
+    items.push(line(l.offreNom, l.prixOffre, `CVPro225 réf ${commande.ref}${l.tarif === 'lancement' ? ' — offre de lancement' : ''}`))
+    if (l.express && l.prixExpress) items.push(line(EXPRESS.nom, l.prixExpress, EXPRESS.description))
+  }
+  if (items.reduce((s, i) => s + i.total_price, 0) !== commande.montant) {
+    items = [line(l.libelle, commande.montant, `CVPro225 réf ${commande.ref}`)]
+  }
 
   return {
     ref: commande.ref,
-    description: `CVPro225 — ${commande.service} ${commande.pack}`,
+    description: `CVPro225 — ${l.libelle}`,
     montant: commande.montant,
-    items: [
-      {
-        name: `${commande.service} — ${commande.pack}`,
-        quantity: 1,
-        unit_price: commande.montant,
-        total_price: commande.montant,
-        description: `Service CVPro225 réf: ${commande.ref}`,
-      },
-    ],
+    items,
     clientNom: commande.nom,
     clientPrenom: commande.prenom,
     clientEmail: commande.email,
     clientTelephone: commande.telephone,
-    returnUrl: `${appUrl}/commander/paiement/retour?ref=${commande.ref}`,
-    cancelUrl: `${appUrl}/commander/paiement/annule?ref=${commande.ref}`,
+    returnUrl: `${appUrl}/commander/paiement/retour?ref=${encodeURIComponent(commande.ref)}`,
+    cancelUrl: `${appUrl}/commander/paiement/annule?ref=${encodeURIComponent(commande.ref)}`,
     webhookUrl: process.env.PAYDUNYA_WEBHOOK_URL || `${appUrl}/api/webhooks/paydunya`,
   }
 }

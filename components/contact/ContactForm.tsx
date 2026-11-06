@@ -60,7 +60,7 @@ export default function ContactForm() {
         </div>
         <h3 className="font-heading text-xl font-bold text-dark">Message envoyé !</h3>
         <p className="mt-2 text-sm text-gray-600">
-          Nous vous répondrons sous 30 minutes sur WhatsApp ou par email.
+          Nous vous répondons sous 2 heures sur WhatsApp ou par email.
         </p>
         <a
           href={`https://wa.me/${WHATSAPP.replace(/[^0-9]/g, '')}`}

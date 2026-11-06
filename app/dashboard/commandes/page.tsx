@@ -34,6 +34,7 @@ export default async function CommandesPage() {
               service={c.service}
               pack={c.pack}
               montant={c.montant}
+              details={c.details}
               statut={c.statut}
               created_at={c.created_at}
               livraison_url={c.livraison_url}

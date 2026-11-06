@@ -5,7 +5,7 @@ import { CVUploadStep } from './CVUploadStep';
 import { CVAnalyzingStep } from './CVAnalyzingStep';
 import { CVResultStep } from './CVResultStep';
 
-function RateLimitedView({ message }: { message?: string }) {
+function RateLimitedView({ message, prixDepart }: { message?: string; prixDepart: string }) {
   return (
     <div className="mx-auto max-w-2xl px-4 py-12 md:py-16">
       <div className="rounded-2xl bg-white p-8 text-center shadow-xl md:p-12">
@@ -14,13 +14,13 @@ function RateLimitedView({ message }: { message?: string }) {
           Limite gratuite atteinte
         </h2>
         <p className="mb-8 text-lg leading-relaxed text-text-gray">
-          {message || 'Vous avez déjà utilisé l’analyse gratuite aujourd’hui. Pour des analyses illimitées, commandez votre CV Pro ATS à 15 000 FCFA.'}
+          {message || `Vous avez déjà utilisé l’analyse gratuite aujourd’hui. Pour aller plus loin, commandez votre CV Pro ATS à partir de ${prixDepart}.`}
         </p>
 
         <div className="mb-8 rounded-xl bg-gradient-to-br from-primary/5 to-primary/10 p-6">
           <h3 className="mb-3 text-xl font-semibold text-dark">Passez au niveau supérieur</h3>
           <p className="mb-4 text-text-gray">
-            Avec CV Pro ATS, recevez un CV professionnel optimisé en 24-72h, avec analyse complète et recommandations personnalisées.
+            Avec CV Pro ATS, recevez un CV professionnel optimisé en 48h (24h avec l’option Express), avec analyse complète et recommandations personnalisées.
           </p>
           <ul className="mx-auto mb-2 max-w-md space-y-2 text-left">
             <li className="flex items-center gap-2 text-dark">
@@ -33,7 +33,7 @@ function RateLimitedView({ message }: { message?: string }) {
             </li>
             <li className="flex items-center gap-2 text-dark">
               <span className="text-primary">✓</span>
-              Lettre de motivation incluse
+              Option lettre de motivation disponible
             </li>
           </ul>
         </div>
@@ -42,7 +42,7 @@ function RateLimitedView({ message }: { message?: string }) {
           href="/services/cv-pro"
           className="inline-block rounded-xl bg-primary px-8 py-4 font-semibold text-white shadow-lg transition hover:bg-primary-600 hover:shadow-xl"
         >
-          Découvrir CV Pro ATS — À partir de 15 000 FCFA →
+          Découvrir CV Pro ATS — À partir de {prixDepart} →
         </a>
 
         <p className="mt-6 text-sm text-text-gray">
@@ -93,7 +93,8 @@ const INITIAL_STATE: CVCheckerState = {
   result: null,
 };
 
-export function CVCheckerFlow() {
+/** prixDepart : fourni par la page serveur (lib/offres.ts), pour suivre l'offre de lancement. */
+export function CVCheckerFlow({ prixDepart }: { prixDepart: string }) {
   const [state, setState] = useState<CVCheckerState>(INITIAL_STATE);
 
   return (
@@ -135,7 +136,7 @@ export function CVCheckerFlow() {
         />
       )}
       {state.step === 'rate_limited' && (
-        <RateLimitedView message={state.rateLimitMessage} />
+        <RateLimitedView message={state.rateLimitMessage} prixDepart={prixDepart} />
       )}
     </div>
   );

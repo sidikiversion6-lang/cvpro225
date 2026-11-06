@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import StatusBadge from './StatusBadge'
-import { LABELS_SERVICE, LABELS_PACK, SERVICE_COLORS } from '@/types/commande'
+import { SERVICE_COLORS } from '@/types/commande'
+import { ligneCommande } from '@/lib/commande-detail'
 import { formatPrix } from '@/lib/commande-config'
 
 const SERVICE_EMOJIS: Record<string, string> = { cv: '📄', visa: '🛂', job: '💼', tender: '📋' }
@@ -11,16 +12,16 @@ interface Props {
   service: string
   pack: string
   montant: number
+  details?: unknown
   statut: string
   created_at: string | Date
   livraison_url?: string | null
 }
 
-export default function CommandeCard({ id, ref, service, pack, montant, statut, created_at, livraison_url }: Props) {
+export default function CommandeCard({ id, ref, service, pack, montant, details, statut, created_at, livraison_url }: Props) {
   const date = new Date(created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })
   const emoji = SERVICE_EMOJIS[service] || '📄'
-  const serviceLabel = LABELS_SERVICE[service as keyof typeof LABELS_SERVICE] || service
-  const packLabel = LABELS_PACK[pack] || pack
+  const libelle = ligneCommande({ pack, details }).libelle
   const color = SERVICE_COLORS[service as keyof typeof SERVICE_COLORS] || '#0F7B5A'
 
   return (
@@ -31,7 +32,7 @@ export default function CommandeCard({ id, ref, service, pack, montant, statut, 
             {emoji}
           </div>
           <div>
-            <p className="font-heading text-sm font-bold text-dark">{serviceLabel} — {packLabel}</p>
+            <p className="font-heading text-sm font-bold text-dark">{libelle}</p>
             <p className="text-xs text-gray-400">Réf: {ref}</p>
           </div>
         </div>

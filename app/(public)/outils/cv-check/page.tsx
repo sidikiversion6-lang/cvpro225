@@ -1,4 +1,8 @@
 import { CVCheckerFlow } from '@/components/cv-checker/CVCheckerFlow';
+import { formatFcfa, prixMin } from '@/lib/offres';
+
+// Prix « à partir de » lu à chaque requête (offre de lancement).
+export const dynamic = 'force-dynamic';
 
 export const metadata = {
   title: "CV Checker IA - Testez votre CV gratuitement | CVPro225",
@@ -9,7 +13,7 @@ export default function CVCheckPage() {
   return (
     <div className="bg-background py-8 md:py-12">
       <div className="container mx-auto max-w-6xl px-4">
-        <CVCheckerFlow />
+        <CVCheckerFlow prixDepart={formatFcfa(prixMin())} />
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { PAGE_METADATA } from '@/lib/seo'
+import { metaJobAssist } from '@/lib/seo'
 import Link from 'next/link'
 import { jobAssist as data } from '@/content/services'
 import ServiceHero from '@/components/services/ServiceHero'
@@ -7,13 +7,17 @@ import FAQAccordion from '@/components/services/FAQAccordion'
 import ServiceSidebar from '@/components/services/ServiceSidebar'
 import ServiceSteps from '@/components/services/ServiceSteps'
 import ServiceBenefits from '@/components/services/ServiceBenefits'
-import PricingCard from '@/components/ui/PricingCard'
-import type { PricingFeature } from '@/components/ui/PricingCard'
+import OffresGrid from '@/components/offres/OffresGrid'
+import { SITE_CONFIG } from '@/lib/site-config'
 import PaymentModalities from '@/components/services/PaymentModalities'
 
 const C = data.couleur
 
-export const metadata = PAGE_METADATA.jobAssist
+// Prix lus à chaque requête : la fin de l'offre de lancement s'applique sans redéploiement.
+export const dynamic = 'force-dynamic'
+export function generateMetadata() {
+  return metaJobAssist()
+}
 
 const STEPS = [
   {
@@ -22,8 +26,8 @@ const STEPS = [
         <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
       </svg>
     ),
-    titre: 'Déposez votre profil',
-    description: 'Envoyez-nous votre CV et vos préférences sectorielles. Nous créons votre profil candidat.',
+    titre: 'Commandez en ligne',
+    description: 'Choisissez JobAssist (option Express 24h possible) et payez en ligne en toute sécurité.',
   },
   {
     icon: (
@@ -31,8 +35,8 @@ const STEPS = [
         <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
       </svg>
     ),
-    titre: 'Veille ciblée',
-    description: 'Nous surveillons les offres pertinentes sur les portails locaux et internationaux.',
+    titre: 'Partagez votre profil',
+    description: 'Envoyez votre CV, ou échangez avec un conseiller sur WhatsApp si vous n\'en avez pas encore.',
   },
   {
     icon: (
@@ -40,8 +44,8 @@ const STEPS = [
         <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
       </svg>
     ),
-    titre: 'Candidature complète',
-    description: 'CV adapté, lettre de motivation personnalisée et soumission sur la plateforme de l\'employeur.',
+    titre: 'Vos documents rédigés',
+    description: 'CV Pro ATS, lettre de motivation et profil LinkedIn optimisé, livrés en 72h (24h en Express).',
   },
   {
     icon: (
@@ -49,26 +53,26 @@ const STEPS = [
         <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 9.75a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
       </svg>
     ),
-    titre: 'Préparation entretien',
+    titre: 'Coaching entretien',
     description: 'Questions fréquentes par secteur, simulation et conseils de présentation pour réussir l\'entretien.',
   },
 ]
 
 const BENEFITS = [
-  'Veille d\'offres sur les portails locaux (224Business, AGUIPE) et internationaux (LinkedIn, Devex)',
-  'CV adapté à chaque offre avec mots-clés sectoriels',
-  'Lettre de motivation personnalisée',
-  'Soumission complète sur la plateforme de l\'employeur',
-  'Suivi des candidatures et relances',
-  'Préparation aux entretiens par secteur (mines, banque, ONG...)',
+  'CV Pro ATS avec mots-clés adaptés à votre secteur',
+  'Lettre de motivation personnalisée pour le poste visé',
+  'Profil LinkedIn optimisé, cohérent avec votre CV',
+  'Coaching entretien : questions fréquentes, simulation, conseils',
+  'Livraison en 72h, ou 24h avec l\'option Express',
+  'Satisfait ou refait : retouches gratuites jusqu\'à votre satisfaction',
 ]
 
 const POURQUOI = [
-  'Veille active sur plus de 20 portails d\'emploi locaux et internationaux',
-  'Candidatures adaptées aux standards des recruteurs et institutions',
-  'Accompagnement personnalisé pour chaque profil',
-  'Expertise sectorielle : mines, banque, télécoms, ONG, administration',
-  'Suivi jusqu\'à l\'entretien et au-delà',
+  'CV optimisés pour les logiciels ATS utilisés par les recruteurs',
+  'Documents adaptés aux attentes des recruteurs en Côte d\'Ivoire et à l\'international',
+  'Un conseiller joignable sur WhatsApp, réponse en 2h',
+  'Expertise sectorielle : banque, télécoms, ONG, mines, administration',
+  'Satisfait ou refait : nous retravaillons vos documents gratuitement',
 ]
 
 export default function JobAssistPage() {
@@ -135,42 +139,13 @@ export default function JobAssistPage() {
       <section id="packs" className="scroll-mt-20 bg-gray-50 py-14 lg:py-20">
         <div className="gp-container">
           <h2 className="mb-4 text-center font-heading text-2xl font-extrabold text-dark sm:text-3xl">
-            Nos <span style={{ color: C }}>formules</span>
+            Notre <span style={{ color: C }}>offre</span>
           </h2>
           <p className="mb-10 text-center text-sm text-gray-500">
-            De la candidature unique à l&apos;accompagnement mensuel complet.
+            CV, lettre de motivation, profil LinkedIn et coaching entretien : tout pour décrocher le poste.
           </p>
 
-          <div className="mx-auto grid max-w-4xl items-stretch gap-8 sm:grid-cols-2">
-            <PricingCard
-              label="JobAssist"
-              subtitle="Formule standard"
-              price="30 000"
-              delay="72h"
-              accentColor={C}
-              ctaHref="/commander?service=job&pack=pack-3"
-              features={[
-                { text: 'Tout le CV Pro ATS', included: true },
-                { text: 'Lettre de motivation personnalisée', included: true },
-                { text: 'Optimisation du profil LinkedIn', included: true },
-                { text: 'Coaching candidature', included: true },
-              ] as PricingFeature[]}
-            />
-            <PricingCard
-              label="JobAssist Express"
-              subtitle="Livraison express"
-              price="35 000"
-              delay="48h"
-              featured
-              badge="Rapide"
-              accentColor={C}
-              ctaHref="/commander?service=job&pack=job-express"
-              features={[
-                { text: 'Tout le pack standard', included: true },
-                { text: 'Livraison prioritaire en 48h', included: true },
-              ] as PricingFeature[]}
-            />
-          </div>
+          <OffresGrid ids={['jobassist']} />
 
           <div className="mt-12">
             <PaymentModalities />
@@ -182,14 +157,14 @@ export default function JobAssistPage() {
       <section id="secteurs" className="scroll-mt-20 bg-white py-14 lg:py-20">
         <div className="gp-container">
           <h2 className="mb-10 text-center font-heading text-2xl font-extrabold text-dark sm:text-3xl">
-            Secteurs <span style={{ color: C }}>couverts</span>
+            Secteurs <span style={{ color: C }}>accompagnés</span>
           </h2>
           <div className="mx-auto max-w-[1200px] overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
             <table className="w-full min-w-[500px] text-left text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
                   <th className="px-5 py-3 font-heading text-xs font-semibold uppercase tracking-wider text-gray-400">Secteur</th>
-                  <th className="px-5 py-3 font-heading text-xs font-semibold uppercase tracking-wider text-gray-400">Sources surveillées</th>
+                  <th className="px-5 py-3 font-heading text-xs font-semibold uppercase tracking-wider text-gray-400">Exemples d&apos;employeurs en Côte d&apos;Ivoire</th>
                 </tr>
               </thead>
               <tbody>
@@ -205,7 +180,8 @@ export default function JobAssistPage() {
         </div>
       </section>
 
-      {/* Témoignages */}
+      {/* Témoignages — masqués tant que nous n'avons pas de vrais avis (lib/site-config.ts) */}
+      {SITE_CONFIG.showTestimonials && (
       <section className="bg-gray-50 py-14 lg:py-20">
         <div className="gp-container">
           <h2 className="mb-10 text-center font-heading text-2xl font-extrabold text-dark sm:text-3xl">
@@ -214,6 +190,7 @@ export default function JobAssistPage() {
           <ServiceTestimonials items={data.temoignages} accentColor={C} />
         </div>
       </section>
+      )}
 
       {/* Pourquoi + FAQ 2 colonnes */}
       <section className="bg-white py-14 lg:py-20">

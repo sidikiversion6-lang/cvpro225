@@ -24,7 +24,7 @@ export default function Sidebar({ user, unreadCount = 0 }: Props) {
     <aside className="flex h-full w-64 flex-col border-r border-gray-100 bg-white">
       <div className="border-b border-gray-100 p-5">
         <Link href="/" className="text-lg font-extrabold">
-          <span className="text-dark">Pro</span><span className="text-primary">224</span>
+          <span className="text-dark">CVPro</span><span className="text-primary">225</span>
         </Link>
         <div className="mt-4 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">

@@ -43,3 +43,9 @@ infra/traefik/letsencrypt/*
 
 # état local des déploiements (serveur)
 .deploy/
+
+# Cache local du CLI Supabase (jamais versionné)
+supabase/.temp/
+# Copies locales de fichiers d'environnement (secrets)
+env.local*
+*.env.rtf
