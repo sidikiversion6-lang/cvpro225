@@ -40,7 +40,9 @@ if (( IMPORT )); then
 fi
 
 APP_DIR="${APP_DIR:-/srv/cvpro225}"
-CHECK="$APP_DIR/infra/server/check-env.sh"
+# check-env.sh installé à côté de ce script (ex. ~/bin) en priorité, sinon celui du dépôt.
+CHECK="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/check-env.sh"
+[[ -f "$CHECK" ]] || CHECK="$APP_DIR/infra/server/check-env.sh"
 cd "$APP_DIR" || { echo "Dossier introuvable : $APP_DIR" >&2; exit 1; }
 [[ -f "$CHECK" ]] || { echo "check-env.sh introuvable : $CHECK" >&2; exit 1; }
 
